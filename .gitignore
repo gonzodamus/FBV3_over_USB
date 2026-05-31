@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
+
+# Firmware images are NOT tracked: the stock image is Line 6's copyrighted
+# property and the patched image is a derivative work. They live here locally
+# and are reproducible with build/build_firmware.py from your own stock copy.
+# To track them anyway (e.g. a private repo): git add -f firmware/*.hxf
+firmware/*.hxf
