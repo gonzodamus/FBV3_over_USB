@@ -93,6 +93,27 @@ pip install capstone                        # optional: also disassemble-verifie
 handler placed in dead space inside the factory self-test routine, and a 1-byte version
 bump). The reverse-engineering notes are in [`docs/FBV_LED_FINDINGS.md`](docs/FBV_LED_FINDINGS.md).
 
+## What this patch changes (and what it costs)
+
+Every edit is made in place, so the firmware image stays the same size and the device's
+boot integrity check still passes (51 bytes changed total).
+
+**Kept — nothing player-facing is lost:**
+- MIDI **out** from the knobs, expression pedal, and footswitches.
+- Inbound USB **SysEx** handling (device identity / firmware updater), left intact.
+- Normal LED behavior — we only *add* a way to drive the LEDs over USB.
+
+**Removed:**
+- The **factory manufacturing self-test** (the "NITEST" button/LCD self-test routine).
+  The 46-byte LED handler is tucked inside that routine's code, so the self-test no
+  longer functions. It's an assembly-line diagnostic with no documented end-user way to
+  trigger it, so in normal use you don't lose anything you can reach.
+
+**Changed:**
+- Reported firmware version `1.0.2.0.0` → `1.0.2.0.1` (a build marker).
+
+Reverting is just reflashing the stock firmware (see below).
+
 ## Recovery
 
 Flashing is reversible. If a build misbehaves, restore the stock firmware:
