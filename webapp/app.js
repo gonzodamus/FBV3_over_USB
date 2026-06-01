@@ -1,7 +1,7 @@
 'use strict';
 
 /* ----------------------------------------------------------------------------
- * FBV3 LED Editor — pure Web MIDI sender.
+ * FBV3 LED Editor: pure Web MIDI sender.
  *
  * Protocol (see the project README):
  *   - Output port whose name contains "FBV 3". Channel 1.
@@ -66,13 +66,13 @@ LEDS.forEach((led) => {
 });
 
 // Pedalboard layout: one array per row, holding LED indices. `'blank'` leaves an
-// empty slot. Top row is FS1–FS5, a gap, then FUNC in the 7th slot.
+// empty slot. Top row is FS1-FS5, a gap, then FUNC in the 7th slot.
 const PAD_ROWS = [
   [0, 1, 2, 3, 4, 'blank', 12],
   [5, 6, 7, 8],
 ];
 
-// Authoritative model — the firmware holds whatever we last sent, so what is
+// Authoritative model: the firmware holds whatever we last sent, so what is
 // on screen is what is on the pedal. Keyed by LED index (=== CC number);
 // indices are not contiguous, so this is an object rather than an array.
 const model = {};
@@ -137,7 +137,7 @@ async function initMidi() {
     setStatus('error', 'MIDI access denied');
     showBanner(
       '<strong>Could not get MIDI access.</strong> Allow the MIDI permission and reload. ' +
-        'Web MIDI also requires a secure context — serve this over <code>https</code> or ' +
+        'Web MIDI also requires a secure context: serve this over <code>https</code> or ' +
         '<code>http://localhost</code>, not <code>file://</code>. ' +
         `<br>Details: ${escapeHtml(String(err && err.message ? err.message : err))}`
     );
@@ -163,7 +163,7 @@ function findPort() {
   if (found) {
     setStatus('ok', `Connected: ${found.name}`);
     hideBanner();
-    // Newly (re)connected — push the global flag + layout so the pedal matches.
+    // Newly (re)connected: push the global flag + layout so the pedal matches.
     if (found.id !== prevId) {
       sendInvert();
       sendAll();
@@ -173,7 +173,7 @@ function findPort() {
     showBanner(
       `<strong>No “${PORT_MATCH}” MIDI output found.</strong> Connect the FBV3 by USB ` +
         '(it must be running the patched firmware, <code>FBV Chroma 1.1</code>). ' +
-        'It will be detected automatically when it appears — no reload needed.'
+        'It will be detected automatically when it appears, no reload needed.'
     );
   }
 }
@@ -216,7 +216,7 @@ function buildPedalboard() {
   board.className = 'pedalboard';
 
   // Flattened into the 7-column grid. The first row fills all 7 columns (incl.
-  // the blank), so the second row (A–D) wraps cleanly underneath.
+  // the blank), so the second row (A-D) wraps cleanly underneath.
   for (const row of PAD_ROWS) {
     for (const item of row) {
       if (item === 'blank') {
@@ -250,7 +250,7 @@ function buildPad(led) {
   return pad;
 }
 
-// The single shared editor — swatches + state, applied to the selected LED.
+// The single shared editor: swatches + state, applied to the selected LED.
 function buildEditor() {
   const editor = document.createElement('div');
   editor.className = 'editor';
@@ -339,7 +339,7 @@ function select(idx) {
 function onColorPick(idx, colorId) {
   const led = model[idx];
   led.color = colorId;
-  // Picking a color while off implies "turn it on" — promote to steady so the
+  // Picking a color while off implies "turn it on": promote to steady so the
   // click produces visible feedback.
   if (led.state === STATE_OFF) led.state = STATE_STEADY;
   commit(idx);
