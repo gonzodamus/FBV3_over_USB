@@ -48,4 +48,4 @@ on-screen layout so the hardware matches the editor.
 ## Scope
 
 LED control only. Configuring what each footswitch *sends* lives in Line 6's editor over a
-separate, un-reverse-engineered protocol and is out of scope (see the spec).
+separate, un-reverse-engineered protocol and is out of scope.
