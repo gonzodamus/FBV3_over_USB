@@ -11,6 +11,10 @@ patch repurposes the dropped inbound Control Change messages and routes them to 
 firmware's existing LED routine. The image is patched in place (same size), so the
 device's boot integrity check still passes.
 
+It also **inverts the footswitch LEDs**: each LED is lit in its (USB-set) color when the
+switch is *not* pressed, and goes dark *while* the switch is held (momentary). Set a
+color once over USB and the switch lights up in it, blinking off as you stomp.
+
 Status: **working** on firmware v1.02.00. Patched build reports version `1.0.2.0.1`.
 
 ## Requirements
@@ -22,7 +26,7 @@ Status: **working** on firmware v1.02.00. Patched build reports version `1.0.2.0
 
 ## Installation (flash the firmware)
 
-1. Flash **`firmware/Fbv3_ledcc_v3.hxf`** with the Line 6 Updater, the same way you'd
+1. Flash **`firmware/Fbv3_ledcc_v5.hxf`** with the Line 6 Updater, the same way you'd
    apply an official update.
 2. The Updater may show a one-time **error → restart**; let it retry. (Our zlib stream
    isn't byte-identical to Line 6's, but the device verifies the *decompressed* image,
@@ -85,29 +89,35 @@ The patched `.hxf` is reproducible from the stock firmware:
 
 ```sh
 # place your stock firmware here first:  firmware/Fbv3_v1_02_00.hxf
-python3 build/build_firmware.py            # writes firmware/Fbv3_ledcc_v3.hxf
+python3 build/build_firmware.py            # writes firmware/Fbv3_ledcc_v5.hxf
 pip install capstone                        # optional: also disassemble-verifies the patch
 ```
 
 `build/build_firmware.py` documents exactly what it changes (a 4-byte detour, a 46-byte
-handler placed in dead space inside the factory self-test routine, and a 1-byte version
-bump). The reverse-engineering notes are in [`docs/FBV_LED_FINDINGS.md`](docs/FBV_LED_FINDINGS.md).
+CC handler placed in dead space inside the factory self-test routine, a 10-byte LED-invert
+stub, a redirect of the switch-event LED call, and a 1-byte version bump). The
+reverse-engineering notes are in [`docs/FBV_LED_FINDINGS.md`](docs/FBV_LED_FINDINGS.md).
 
 ## What this patch changes (and what it costs)
 
 Every edit is made in place, so the firmware image stays the same size and the device's
-boot integrity check still passes (51 bytes changed total).
+boot integrity check still passes (63 bytes changed total).
 
 **Kept — nothing player-facing is lost:**
 - MIDI **out** from the knobs, expression pedal, and footswitches.
 - Inbound USB **SysEx** handling (device identity / firmware updater), left intact.
-- Normal LED behavior — we only *add* a way to drive the LEDs over USB.
+
+**Added / changed behavior:**
+- USB Control Change → footswitch LED color/state (the main feature).
+- **Inverted footswitch LEDs**: lit (in the USB-set color) when not pressed, dark while
+  pressed. This replaces the stock behavior where a switch's LED followed the pressed
+  state directly. The LED *color* you set over USB persists across presses.
 
 **Removed:**
 - The **factory manufacturing self-test** (the "NITEST" button/LCD self-test routine).
-  The 46-byte LED handler is tucked inside that routine's code, so the self-test no
-  longer functions. It's an assembly-line diagnostic with no documented end-user way to
-  trigger it, so in normal use you don't lose anything you can reach.
+  The CC handler and invert stub are tucked inside that routine's code, so the self-test
+  no longer functions. It's an assembly-line diagnostic with no documented end-user way
+  to trigger it, so in normal use you don't lose anything you can reach.
 
 **Changed:**
 - Reported firmware version `1.0.2.0.0` → `1.0.2.0.1` (a build marker).

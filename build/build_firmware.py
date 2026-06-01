@@ -3,7 +3,8 @@
 Build the patched Line 6 FBV3 (MK3) firmware that adds USB LED control.
 
 Input : firmware/Fbv3_v1_02_00.hxf   (stock Line 6 firmware, v1.02.00)
-Output: firmware/Fbv3_ledcc_v3.hxf   (patched: USB MIDI CC -> footswitch LED color)
+Output: firmware/Fbv3_ledcc_v5.hxf   (patched: USB MIDI CC -> footswitch LED color,
+                                       with inverted switch LEDs)
 
 WHAT THE PATCH DOES
 -------------------
@@ -17,13 +18,22 @@ Control Change messages so that a CC sets a footswitch LED's color/state:
                                        4 yellow, 5 pink, 6 orange, 7 white
                    state (value>>3):   0 off, 1 steady (8-15), 2+ blink (16+)
 
+Plus an inverted footswitch-LED behavior: the LED is lit (in its USB-set color)
+when the switch is NOT pressed, and dark while it IS pressed (momentary).
+
 Mechanism (all edits land in already-programmed .text; image size is unchanged):
   * Detour at flash 0x1401c942 (file 0x0c942): the 4 bytes `str r5,[sp,#4];
     cmp r3,#3` are replaced with `b.w 0x14019b70`.
-  * A 46-byte handler is written into a dead literal pool inside the factory
+  * A 46-byte CC handler is written into a dead literal pool inside the factory
     self-test routine at flash 0x14019b70 (file 0x09b70) -- never executed as
     code, only reached via our detour. It preserves the SysEx path, and for a
     CC calls 0x14018c34(idx,color) then 0x14018bcc(idx,state).
+  * Inverted switch LED: the switch-event handler's tail-call that sets the LED
+    on/off from the switch state (flash 0x1401c712 `b.w 0x14018bcc`) is
+    redirected to a 10-byte stub at flash 0x14019b9e (in the same sacrificed
+    self-test body, right after the CC handler). The stub flips the state
+    (`clz r1,r1; lsrs r1,r1,#5` -> 1 if released/0, else 0) and tail-calls
+    0x14018bcc. So pressed=off, released=on. (The CC-set color persists.)
   * One-byte version-marker bump: "1.0.2.0.0" -> "1.0.2.0.1" at file 0x002ac.
 
 The .hxf is an IFF container: header[:104] + zlib(level 9) of the 57498-byte
@@ -35,13 +45,17 @@ import os, struct, zlib, hashlib, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC  = os.path.join(ROOT, "firmware", "Fbv3_v1_02_00.hxf")
-DST  = os.path.join(ROOT, "firmware", "Fbv3_ledcc_v3.hxf")
+DST  = os.path.join(ROOT, "firmware", "Fbv3_ledcc_v5.hxf")
 
-IMAGE_LEN = 57498
-CAVE      = 0x14019b70   # handler location (flash); file off = flash - 0x14010000
-HOOK_FOFF = 0x0c942      # detour site (file offset)
-CAVE_FOFF = 0x09b70      # handler site (file offset)
-VER_FOFF  = 0x002b4      # last byte of "1.0.2.0.0"
+IMAGE_LEN  = 57498
+CAVE       = 0x14019b70   # CC handler location (flash); file off = flash - 0x14010000
+HOOK_FOFF  = 0x0c942      # CC-handler detour site (file offset)
+CAVE_FOFF  = 0x09b70      # CC handler site (file offset)
+STUB       = 0x14019b9e   # invert stub location (flash), right after the 46B CC handler
+STUB_FOFF  = 0x09b9e      # invert stub site (file offset)
+SWLED_FOFF = 0x0c712      # switch-event LED tail-call (file offset); stock = b.w 0x14018bcc
+LED_ONOFF  = 0x14018bcc   # HAL: set LED on/blink state -> 0x10001bc4[idx]
+VER_FOFF   = 0x002b4      # last byte of "1.0.2.0.0"
 
 
 def b_t4(pc, target, is_bl):
@@ -90,6 +104,15 @@ def build_handler():
     )
 
 
+def build_invert_stub():
+    s = STUB
+    return (
+        bytes.fromhex("b1fa81f1")          # clz  r1, r1          32 if state==0(released), else <=31
+        + bytes.fromhex("4909")            # lsrs r1, r1, #5      -> 1 if released, 0 if pressed
+        + b_t4(s + 6, LED_ONOFF, False)    # b.w  0x14018bcc      set LED on/off (tail-call)
+    )
+
+
 def main():
     if not os.path.exists(SRC):
         sys.exit(f"missing stock firmware: {SRC}\n"
@@ -99,8 +122,14 @@ def main():
     assert len(img) == IMAGE_LEN, f"unexpected image size {len(img)}"
 
     handler = build_handler()
-    img[CAVE_FOFF:CAVE_FOFF + len(handler)] = handler           # handler
-    img[HOOK_FOFF:HOOK_FOFF + 4] = b_t4(0x1401c942, CAVE, False)  # detour
+    stub = build_invert_stub()
+    img[CAVE_FOFF:CAVE_FOFF + len(handler)] = handler             # CC handler
+    img[HOOK_FOFF:HOOK_FOFF + 4] = b_t4(0x1401c942, CAVE, False)  # CC-handler detour
+    img[STUB_FOFF:STUB_FOFF + len(stub)] = stub                  # invert stub
+    # redirect the switch-event LED tail-call (stock: b.w 0x14018bcc) through the stub
+    assert bytes(img[SWLED_FOFF:SWLED_FOFF + 4]) == b_t4(0x1401c712, LED_ONOFF, False), \
+        "unexpected bytes at switch-LED tail-call; firmware not the expected v1.02.00"
+    img[SWLED_FOFF:SWLED_FOFF + 4] = b_t4(0x1401c712, STUB, False)
     assert img[VER_FOFF] == ord("0")
     img[VER_FOFF] = ord("1")                                    # 1.0.2.0.0 -> 1.0.2.0.1
     img = bytes(img)
@@ -130,11 +159,14 @@ def main():
     try:
         import capstone
         md = capstone.Cs(capstone.CS_ARCH_ARM, capstone.CS_MODE_THUMB)
-        print("  handler disassembly:")
+        print("  CC handler disassembly:")
         for i in md.disasm(handler, CAVE):
             print(f"    0x{i.address:08x}: {i.mnemonic}\t{i.op_str}")
+        print("  invert stub disassembly:")
+        for i in md.disasm(stub, STUB):
+            print(f"    0x{i.address:08x}: {i.mnemonic}\t{i.op_str}")
     except ImportError:
-        print("  (install 'capstone' to also disassemble-verify the handler)")
+        print("  (install 'capstone' to also disassemble-verify the patch)")
     if not ok:
         sys.exit("VERIFICATION FAILED")
 

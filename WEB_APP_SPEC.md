@@ -76,7 +76,7 @@ Reference: `sendmidi dev "FBV 3" cc 0 9` lights FS1 steady green.
   needed** (LEDs are plain CC); leaving it off avoids an extra permission prompt.
 - Output port names vary by OS/driver — **match on substring `"FBV 3"`**, don't assume an
   exact string. Handle the device being absent / hot-plugged (`onstatechange`).
-- **Requires the patched firmware** (`Fbv3_ledcc_v4.hxf`, reports version `1.0.2.0.1`).
+- **Requires the patched firmware** (`Fbv3_ledcc_v5.hxf`, reports version `1.0.2.0.1`).
   Stock firmware ignores these CCs, so the app does nothing on an unpatched pedal.
 
 ## Out of scope
@@ -88,8 +88,11 @@ Reference: `sendmidi dev "FBV 3" cc 0 9` lights FS1 steady green.
 
 ## Behavior notes (from the firmware side)
 
-- LEDs **hold** whatever you send — color and state persist, including across footswitch
-  presses (the patch decouples the LEDs from switch-press state). So the app's model can
-  be authoritative: what you send is what's shown.
+- The CC-set **color** persists (it isn't overwritten by switch presses). The app can
+  treat the color it sent as authoritative.
+- Footswitch LEDs are **inverted**: lit (in the USB-set color) when the switch is not
+  pressed, dark while it is held (momentary). So the on/off you send is the *resting*
+  state; physically pressing the switch momentarily blanks that LED. The app generally
+  sends a "steady" state and lets the hardware do the press-blanking.
 - Two bytes back the firmware: a **color** byte and an **on/blink** byte. The single CC
   value encodes both (`state*8 + color`), so one message fully sets an LED.
