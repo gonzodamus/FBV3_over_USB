@@ -1,0 +1,36 @@
+MIT License
+
+Copyright (c) 2026 Dick Ward
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+-------------------------------------------------------------------------------
+
+SCOPE — what this license does and does not cover
+
+This MIT license applies ONLY to the original work in this repository: the
+build script (build/), the web application (webapp/), the helper scripts, and
+the documentation.
+
+It does NOT cover the Line 6 FBV3 firmware. The stock firmware image
+(Fbv3_v1_02_00.hxf) is the copyrighted property of Line 6 / Yamaha Guitar
+Group and is not distributed here. The patched image this project produces is
+a derivative of that firmware; you generate it locally from your own legally
+obtained copy. Neither is licensed under the terms above. This project is an
+unofficial, unaffiliated modification provided with no warranty.

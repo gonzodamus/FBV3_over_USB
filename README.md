@@ -1,9 +1,20 @@
 # FBV3 over USB — footswitch LED control
 
-A firmware patch for the **Line 6 FBV3 (MK3)** foot controller that lets you set the
-footswitch **LED colors over USB** from a computer — standalone, with no Line 6 amp
-attached. Send a MIDI **Control Change** and the corresponding LED lights up in the
-color you choose.
+Control the footswitch **LEDs** on a **Line 6 FBV3 (MK3)** from your computer over USB —
+any color, any switch — standalone, with no Line 6 amp attached. Includes a point-and-click
+web editor and a one-time firmware update for the pedal.
+
+> ### 👉 Just want to light up your pedal?
+> **Follow the [Step-by-Step Guide](GUIDE.md)** — plain language, no coding, no terminal.
+> Or open the live editor: **https://gonzodamus.github.io/FBV3_over_USB/** (Chrome/Edge).
+
+**Status:** working on Line 6 firmware v1.02.00; the patched build reports version
+`1.0.2.0.1`. The rest of this README is the **technical** overview (command line + how it
+works) — if you're not a developer, the [guide](GUIDE.md) above is all you need.
+
+---
+
+## How it works
 
 Stock firmware already sends MIDI **out** (knobs, expression pedal, switches) but
 ignores almost all inbound USB MIDI, so the LEDs stay dark without a host amp. This
@@ -17,14 +28,13 @@ It also adds a switchable **footswitch-LED behavior**, toggled over USB (CC #16)
   pressed, and goes dark *while* it's held.
 - **Stock**: the LED is off at rest and lights in its USB-set color only *while* pressed.
 
-Status: **working** on firmware v1.02.00. Patched build reports version `1.0.2.0.1`.
-
 ## Requirements
 
 - Line 6 **FBV3 (MK3)**, connected by USB.
-- macOS (tested) with [`sendmidi`](https://github.com/gbevin/SendMIDI):
-  `brew install sendmidi` (and `receivemidi` to read replies).
 - The **Line 6 FBV3 Updater** (or your usual method) to flash a `.hxf` file.
+- For the command-line usage below: [`sendmidi`](https://github.com/gbevin/SendMIDI)
+  (`brew install sendmidi` on macOS; `receivemidi` to read replies). Prefer not to use
+  the terminal? Use the **[web editor](https://gonzodamus.github.io/FBV3_over_USB/)** instead.
 
 ## Installation (flash the firmware)
 
@@ -101,13 +111,16 @@ sendmidi dev "FBV 3" syx hex 7E 7F 06 01     # identity request
 
 ## Building from source
 
-The patched `.hxf` is reproducible from the stock firmware:
+The patched `.hxf` is reproducible from the stock firmware. Put your own copy of
+`Fbv3_v1_02_00.hxf` in `firmware/` first, then:
 
 ```sh
-# place your stock firmware here first:  firmware/Fbv3_v1_02_00.hxf
 python3 build/build_firmware.py            # writes firmware/Fbv3_ledcc_v7.hxf
 pip install capstone                        # optional: also disassemble-verifies the patch
 ```
+
+On a Mac you can skip the terminal: double-click **`Build patched firmware (Mac).command`**
+in Finder — it runs the same build and tells you where the output landed.
 
 `build/build_firmware.py` documents exactly what it changes (a 4-byte detour, a 0x48-byte
 CC handler placed in dead space inside the factory self-test routine, a 0x1a-byte mode
@@ -150,10 +163,18 @@ Flashing is reversible. If a build misbehaves, restore the stock firmware:
 
 The recovery bootloader lives in a separate flash region that this patch never touches.
 
+## License
+
+The original work in this repo — the build script, the web app, the helper, and the
+docs — is **MIT licensed** (see [LICENSE](LICENSE)). The Line 6 firmware is **not**:
+it's Line 6 / Yamaha Guitar Group's copyrighted property and is not covered by the MIT
+license or distributed here.
+
 ## Notes
 
 - The firmware images are Line 6's copyrighted property (the patched one is a
   derivative). They're for **personal use** — don't redistribute them. They are
   gitignored here for that reason; the build script regenerates the patched image
   from your own copy of the stock firmware.
-- Use at your own risk. This is an unofficial modification with no warranty.
+- This is an **unofficial** modification, not affiliated with or endorsed by Line 6 /
+  Yamaha Guitar Group. Use at your own risk, with no warranty.
