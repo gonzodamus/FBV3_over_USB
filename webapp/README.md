@@ -29,8 +29,7 @@ on-screen layout so the hardware matches the editor.
 - The LEDs are laid out like the pedal. **Click a lamp to select it**, then pick a
   **color** swatch and a **Steady / Blink** state in the editor below. Every change is
   sent to the pedal immediately as a Control Change.
-- **Off** (toolbar) blanks every LED — this is now the way to turn LEDs off.
-- **Invert** (toolbar) is a global toggle sent as `CC 16`. *On* (default, `value 0`) is the
+- **Invert** (toolbar, far right) is a global toggle sent as `CC 16`. *On* (default, `value 0`) is the
   inverted behavior — LED lit at rest, dark while the switch is pressed; *Off* (`value 1`)
   is stock — LED off at rest, lit only while pressed. The choice persists and is re-sent on
   connect (the firmware flag resets to inverted on power-up).

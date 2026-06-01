@@ -387,13 +387,6 @@ function applyPreset(name) {
   }
 }
 
-function allOff() {
-  setLayout(
-    LEDS.map((led) => ({ idx: led.idx, state: STATE_OFF, color: model[led.idx].color })),
-    { send: true }
-  );
-}
-
 /* ---------- Scenes (localStorage) ---------- */
 
 function getScenes() {
@@ -554,7 +547,6 @@ function init() {
   dom.status = document.getElementById('status');
   dom.banner = document.getElementById('banner');
   dom.board = document.getElementById('board');
-  dom.allOff = document.getElementById('allOff');
   dom.invertToggle = document.getElementById('invertToggle');
   dom.sceneChips = document.getElementById('sceneChips');
   dom.saveScene = document.getElementById('saveScene');
@@ -566,7 +558,6 @@ function init() {
   refreshInvert();
   renderScenes();
 
-  dom.allOff.addEventListener('click', allOff);
   dom.invertToggle.addEventListener('click', toggleInvert);
   dom.saveScene.addEventListener('click', saveScene);
 
