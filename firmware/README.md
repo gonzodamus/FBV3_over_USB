@@ -12,6 +12,6 @@ Line 6's copyrighted property, and the patched image is a derivative of it.
 **The build produces:**
 
 - `Fbv3_Chroma_1.1.hxf` — the patched firmware (boots as **FBV Chroma 1.1**), written here
-  by `build/build_firmware.py` (or the double-click `Build patched firmware (Mac).command`).
+  by `build/build_firmware.py` (or the double-click `Build Firmware.command`).
 
 See the top-level [README](../README.md) for the full build and flashing steps.
