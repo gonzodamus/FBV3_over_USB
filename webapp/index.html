@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FBV3 LED Editor</title>
+  <meta name="description" content="Web MIDI control of the Line 6 FBV3 footswitch LEDs." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <h1>FBV3 LED Editor</h1>
+      <p class="tagline">Web MIDI control for the Line 6 FBV3 footswitch LEDs</p>
+    </div>
+    <div id="status" class="status status--pending">
+      <span class="status__dot"></span>
+      <span class="status__text">Starting&hellip;</span>
+    </div>
+  </header>
+
+  <div id="banner" class="banner" hidden></div>
+
+  <section class="toolbar">
+    <div class="toolbar__group">
+      <button id="allOff" class="btn" title="Turn every LED off (and send it)">Off</button>
+      <button id="invertToggle" class="btn btn--toggle" aria-pressed="true">Invert: On</button>
+      <button class="btn" data-preset="rainbow">Rainbow</button>
+      <button class="btn" data-preset="white">All white</button>
+      <span id="sceneChips" class="scene-chips"></span>
+    </div>
+    <button id="saveScene" class="btn btn--primary toolbar__save">Save current&hellip;</button>
+  </section>
+
+  <main id="board" class="board"></main>
+
+  <footer class="footer">
+    <p>
+      Sends <code>Control Change</code> on channel&nbsp;1 &mdash;
+      <code>CC#&nbsp;=&nbsp;LED&nbsp;index</code>, <code>value&nbsp;=&nbsp;state&nbsp;&times;&nbsp;8&nbsp;+&nbsp;color</code>.
+      Requires the patched firmware (reports <code>1.0.2.0.1</code>) and a Chromium browser
+      served over <code>https</code> or <code>localhost</code>.
+    </p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
