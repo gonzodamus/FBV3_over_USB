@@ -58,7 +58,7 @@ if "$PY" build/build_firmware.py; then
   echo "${GREEN}${BOLD}Success!${OFF}"
   echo ""
   echo "Your patched firmware is here:"
-  echo "  ${BOLD}$(pwd)/firmware/Fbv3_ledcc_v7.hxf${OFF}"
+  echo "  ${BOLD}$(pwd)/firmware/Fbv3_Chroma_1.1.hxf${OFF}"
   echo ""
   echo "Next: flash it with the Line 6 FBV3 Updater (see the README's"
   echo "\"Flash the firmware\" steps). You can leave this window open or close it."

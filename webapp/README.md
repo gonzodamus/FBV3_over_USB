@@ -1,8 +1,8 @@
 # FBV3 LED Editor (web app)
 
 A single-page Web MIDI app that controls the Line 6 FBV3 footswitch **LEDs**. It pairs
-with the firmware patch in this repo — see [`../WEB_APP_SPEC.md`](../WEB_APP_SPEC.md) for
-the protocol and [`../README.md`](../README.md) for flashing.
+with the firmware patch in this repo — see [`../README.md`](../README.md) for the MIDI
+protocol (the Usage section) and for flashing.
 
 No build step, no dependencies — just three static files (`index.html`, `styles.css`,
 `app.js`).

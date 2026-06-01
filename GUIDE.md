@@ -46,7 +46,7 @@ building it as easy as a double-click.
    - A window opens, does its thing, and says **Success!**
    - If macOS blocks it the first time ("unidentified developer"), right-click the
      file → **Open** → **Open**, and it'll run.
-5. Your patched file appears in the `firmware` folder as **`Fbv3_ledcc_v7.hxf`**.
+5. Your patched file appears in the `firmware` folder as **`Fbv3_Chroma_1.1.hxf`**.
 
 **On Windows** (or if you prefer the manual way), see
 [Building it yourself](README.md#building-from-source) in the README. It's two lines.
@@ -55,19 +55,14 @@ building it as easy as a double-click.
 
 1. Connect the FBV3 to your computer with the USB cable.
 2. Open the **Line 6 FBV3 Updater**.
-3. Choose the option to update from a **file**, and pick your
-   **`Fbv3_ledcc_v7.hxf`**.
+3. Choose the option to **update from a file**, and pick your **`Fbv3_Chroma_1.1.hxf`**.
 4. Let it run.
    - **You may see a brief "error" and a restart partway through. That's expected.**
      Just let it finish; the pedal checks the file a second way and accepts it.
 5. When it's done, the pedal restarts. That's it, the firmware is updated.
 
-> **Heads up: use the "from a file" (offline) option, like the steps above.** If the
-> Updater starts in online mode with the pedal plugged in, it checks Line 6's servers
-> and can reinstall the official firmware right over your patched one, sometimes before
-> you can stop it. If it ever offers an automatic update, decline it and load the file
-> yourself. Keeping your original `Fbv3_v1_02_00.hxf` handy means you can always go back
-> to stock if you need to.
+> Keep your original `Fbv3_v1_02_00.hxf` handy so you can always go back to stock if you
+> need to (see [If something goes wrong](#if-something-goes-wrong)).
 
 > How to know it worked: when the pedal restarts, its screen shows **"FBV Chroma 1.1"**.
 > (In the Line 6 Updater it lists as version **1.10**.) The lights are controlled from
@@ -144,6 +139,5 @@ unzip it. (If you know Git, you can clone it instead.)
 
 ## Want the technical details?
 
-- [README.md](README.md): overview, command-line usage, and how to build from source.
-- [WEB_APP_SPEC.md](WEB_APP_SPEC.md): the MIDI protocol the editor speaks.
-- [docs/FBV_LED_FINDINGS.md](docs/FBV_LED_FINDINGS.md): the full reverse-engineering story.
+- [README.md](README.md): overview, the MIDI protocol the editor speaks, command-line
+  usage, and how to build from source.

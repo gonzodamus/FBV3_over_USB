@@ -4,32 +4,23 @@ Light up the footswitch **LEDs** on a **Line 6 FBV3 (MK3)** from your computer o
 Any color, any switch, no Line 6 amp required. Comes with a click-and-pick web editor and a
 one-time firmware update for the pedal.
 
-![The web editor: a row of footswitch lamps in different colors next to a color picker](docs/images/led-editor.png)
+![The web editor: a row of footswitch lamps in different colors next to a color picker](assets/led-editor.png)
 
-> ### 👉 Just want to light up your pedal?
-> **Follow the [Step-by-Step Guide](GUIDE.md).** Plain language, no coding, no terminal.
-> It walks you through the one-time firmware update, then the live editor:
-> **https://gonzodamus.github.io/FBV3_over_USB/** (Chrome or Edge).
->
-> The editor only works once your pedal has the patched firmware. Without it, the page
-> opens but stays on "Pedal not found."
+## 👉 Just want to light up your pedal?
 
-**Status:** working on Line 6 firmware v1.02.00. The patched build reports version
-`1.0.2.0.1`. The rest of this README is the technical overview (command line plus how it
-works). If you're not a developer, the [guide](GUIDE.md) above is all you need.
+**Follow the [Step-by-Step Guide](GUIDE.md).** Plain language, no coding, no terminal. It
+walks you through the one-time firmware update, then the live editor at
+**[gonzodamus.github.io/FBV3_over_USB](https://gonzodamus.github.io/FBV3_over_USB/)**
+(Chrome or Edge). The editor needs the patched firmware first; without it, the page just
+shows "Pedal not found."
 
-**Status:** working on Line 6 firmware v1.02.00. The patched build is **FBV Chroma 1.1**:
-the pedal's LCD shows "FBV Chroma 1.1" at startup, and it lists as version 1.10 in the
-Line 6 Updater. The rest of this README is the **technical** overview (command line + how it
-works) — if you're not a developer, the [guide](GUIDE.md) above is all you need.
-
-The only thing this patch gives up is the **factory manufacturing self-test** (the "NITEST"
-button and LCD self-test). Our LED code is tucked inside that routine, so it no longer runs.
-It's an assembly-line diagnostic with no documented way for a player to trigger it, so in
-normal use you won't notice it's gone. Everything else (MIDI out, the firmware updater, the
-LEDs themselves) keeps working, and reverting is just reflashing the stock firmware.
+If you're not a developer, the guide is all you need. The rest of this README is the
+technical overview: the MIDI protocol, the command line, and how the patch works.
 
 ## How it works
+
+The patch is built on Line 6 firmware v1.02.00 and boots as **FBV Chroma 1.1** (it shows
+that on the pedal's LCD, and lists as version 1.10 in the Line 6 Updater).
 
 Stock firmware already sends MIDI **out** (knobs, expression pedal, switches) but ignores
 almost all inbound USB MIDI, so the LEDs stay dark without a host amp. This patch reuses the
@@ -43,6 +34,14 @@ It also adds a switchable footswitch-LED behavior, toggled over USB (CC #16):
   pressed, and goes dark *while* it's held.
 - **Stock**: the LED is off at rest and lights in its USB-set color only *while* pressed.
 
+## Tradeoffs
+
+The only thing this patch gives up is the **factory manufacturing self-test** (the "NITEST"
+button and LCD self-test). Our LED code is tucked inside that routine, so it no longer runs.
+It's an assembly-line diagnostic with no documented way for a player to trigger it, so in
+normal use you won't notice it's gone. Everything else (MIDI out, the firmware updater, the
+LEDs themselves) keeps working, and reverting is just reflashing the stock firmware.
+
 ## Requirements
 
 - Line 6 **FBV3 (MK3)**, connected by USB.
@@ -53,8 +52,8 @@ It also adds a switchable footswitch-LED behavior, toggled over USB (CC #16):
 
 ## Installation (flash the firmware)
 
-1. Flash **`firmware/Fbv3_ledcc_v7.hxf`** with the Line 6 Updater, the same way you'd apply
-   an official update.
+1. In the Line 6 Updater, choose **update from a file** and select
+   **`firmware/Fbv3_Chroma_1.1.hxf`**.
 2. The Updater may show a one-time error and restart partway through. Let it retry. (Our zlib
    stream isn't byte-identical to Line 6's, but the device verifies the *decompressed* image,
    which is correct, so it boots.)
@@ -62,22 +61,6 @@ It also adds a switchable footswitch-LED behavior, toggled over USB (CC #16):
 
 > Don't have the patched file yet? Build it yourself, see
 > [Building from source](#building-from-source).
-
-> ⚠️ **Use the Updater's *offline* mode.** In online mode the Line 6 Updater
-> detects your connected FBV3, checks it against Line 6's servers, and pushes the
-> latest *official* firmware — overwriting your custom build to "correct" anything
-> that doesn't match the official release. Offline mode lets you point the updater
-> at a local `.hxf` file directly and skips that server check; that's the standard
-> way to install any custom/modified firmware on Line 6 devices. A few things to
-> keep in mind:
->
-> - **Don't let the Updater launch in online mode with the FBV3 connected** — it
->   may start flashing before you can intervene.
-> - **Keep a backup of the stock firmware file** before installing, so you can
->   restore to factory if needed (see [Recovery](#recovery)).
-> - After flashing FBV Chroma, **avoid running the Updater in online mode with the
->   unit connected** going forward, or it'll likely flag the firmware as outdated
->   and try to overwrite it.
 
 ## Usage
 
@@ -146,48 +129,16 @@ The patched `.hxf` is reproducible from the stock firmware. Put your own copy of
 `Fbv3_v1_02_00.hxf` in `firmware/` first, then:
 
 ```sh
-python3 build/build_firmware.py            # writes firmware/Fbv3_ledcc_v7.hxf
+python3 build/build_firmware.py            # writes firmware/Fbv3_Chroma_1.1.hxf
 pip install capstone                        # optional: also disassemble-verifies the patch
 ```
 
 On a Mac you can skip the terminal: double-click **`Build patched firmware (Mac).command`**
-in Finder — it runs the same build and tells you where the output landed.
+in Finder. It runs the same build and tells you where the output landed.
 
-`build/build_firmware.py` documents exactly what it changes (a 4-byte detour, a 0x48-byte
+`build/build_firmware.py` documents exactly what it changes: a 4-byte detour, a 0x48-byte
 CC handler placed in dead space inside the factory self-test routine, a 0x1a-byte mode
-stub, a redirect of the switch-event LED call, and a 1-byte version bump). The
-reverse-engineering notes are in [`docs/FBV_LED_FINDINGS.md`](docs/FBV_LED_FINDINGS.md).
-
-## What this patch changes (and what it costs)
-
-Every edit is made in place, so the firmware image stays the same size and the device's
-boot integrity check still passes (105 bytes changed total).
-
-**Kept — nothing player-facing is lost:**
-- MIDI **out** from the knobs, expression pedal, and footswitches.
-- Inbound USB **SysEx** handling (device identity / firmware updater), left intact.
-
-**Added / changed behavior:**
-- USB Control Change → footswitch LED color/state (the main feature).
-- **Switchable footswitch-LED behavior** via CC #16: *inverted* (default — lit at rest,
-  dark while pressed) or *stock* (off at rest, lit only while pressed). Either way the LED
-  *color* you set over USB persists. The mode flag lives in RAM and resets to inverted on
-  power-up.
-
-**Removed:**
-- The **factory manufacturing self-test** (the "NITEST" button/LCD self-test routine).
-  The CC handler and mode stub are tucked inside that routine's code, so the self-test
-  no longer functions. It's an assembly-line diagnostic with no documented end-user way
-  to trigger it, so in normal use you don't lose anything you can reach.
-
-**Changed:**
-- Version marker bumped so the build identifies as **FBV Chroma 1.1** (shown on the
-  pedal's LCD at startup, and listed as version 1.10 in the Line 6 Updater).
-
-`build/build_firmware.py` documents exactly what it changes (a 4-byte detour, a 0x48-byte CC
-handler placed in dead space inside the factory self-test routine, a 0x1a-byte mode stub, a
-redirect of the switch-event LED call, and a 1-byte version bump). The reverse-engineering
-notes are in [`docs/FBV_LED_FINDINGS.md`](docs/FBV_LED_FINDINGS.md).
+stub, a redirect of the switch-event LED call, and the version/banner string edits.
 
 ## Recovery
 

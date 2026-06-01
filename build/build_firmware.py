@@ -3,8 +3,9 @@
 Build the patched Line 6 FBV3 (MK3) firmware that adds USB LED control.
 
 Input : firmware/Fbv3_v1_02_00.hxf   (stock Line 6 firmware, v1.02.00)
-Output: firmware/Fbv3_ledcc_v7.hxf   (patched: USB MIDI CC -> footswitch LED color,
-                                       with a switchable LED behavior mode)
+Output: firmware/Fbv3_Chroma_1.1.hxf (patched: USB MIDI CC -> footswitch LED color,
+                                       with a switchable LED behavior mode; boots as
+                                       "FBV Chroma 1.1")
 
 WHAT THE PATCH DOES
 -------------------
@@ -39,7 +40,9 @@ Mechanism (all edits land in already-programmed .text; image size is unchanged):
     the mode flag: flag==0 -> invert the switch state (clz/lsr) then set LED
     (inverted mode); flag!=0 -> pass the switch state straight through (stock
     mode). Either way it tail-calls 0x14018bcc.
-  * One-byte version-marker bump: "1.0.2.0.0" -> "1.0.2.0.1" at file 0x002ac.
+  * LCD boot banner "Fbv 3 v1.02.00" -> "FBV Chroma 1.1" (file 0x00260), and the
+    SysEx version field "1.0.2.0.0" -> "1.1.0.0.0" (file 0x002ac), which the Line 6
+    Updater shows as 1.10.00.
 
 The .hxf is an IFF container: header[:104] + zlib(level 9) of the 57498-byte
 image. We rebuild it and fix HEAD decompressed-size@36, HEAD MD5@40:56,
@@ -50,7 +53,7 @@ import os, struct, zlib, hashlib, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC  = os.path.join(ROOT, "firmware", "Fbv3_v1_02_00.hxf")
-DST  = os.path.join(ROOT, "firmware", "Fbv3_ledcc_v9.hxf")
+DST  = os.path.join(ROOT, "firmware", "Fbv3_Chroma_1.1.hxf")
 
 IMAGE_LEN  = 57498
 BASE       = 0x14010000   # flash base: flash_addr = file_offset + BASE

@@ -3,7 +3,7 @@
 /* ----------------------------------------------------------------------------
  * FBV3 LED Editor — pure Web MIDI sender.
  *
- * Protocol (see WEB_APP_SPEC.md):
+ * Protocol (see the project README):
  *   - Output port whose name contains "FBV 3". Channel 1.
  *   - Control Change. Raw bytes: [0xB0, ledIndex, value]
  *   - CC number = LED index
