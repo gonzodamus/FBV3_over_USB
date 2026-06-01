@@ -358,14 +358,20 @@ function commit(idx) {
   saveLast();
 }
 
-function setLayout(layout, { send }) {
+// Load a saved layout array into the model (no rendering/sending). Tolerates
+// older scenes that lack an explicit idx by falling back to position.
+function applyLayoutToModel(layout) {
+  if (!Array.isArray(layout)) return;
   layout.forEach((s, i) => {
-    // Prefer an explicit idx; fall back to positional for older saved scenes.
     const idx = s && Number.isInteger(s.idx) ? s.idx : LEDS[i] && LEDS[i].idx;
     if (idx == null || !model[idx]) return;
     model[idx].state = clampState(s.state);
     model[idx].color = clampColor(s.color);
   });
+}
+
+function setLayout(layout, { send }) {
+  applyLayoutToModel(layout);
   refreshAll();
   saveLast();
   if (send) sendAll();
@@ -515,15 +521,7 @@ function saveLast() {
 function loadLast() {
   try {
     const raw = localStorage.getItem(LAST_KEY);
-    if (!raw) return;
-    const layout = JSON.parse(raw);
-    if (!Array.isArray(layout)) return;
-    layout.forEach((s, i) => {
-      const idx = s && Number.isInteger(s.idx) ? s.idx : LEDS[i] && LEDS[i].idx;
-      if (idx == null || !model[idx]) return;
-      model[idx].state = clampState(s.state);
-      model[idx].color = clampColor(s.color);
-    });
+    if (raw) applyLayoutToModel(JSON.parse(raw));
   } catch {
     /* ignore malformed data */
   }
