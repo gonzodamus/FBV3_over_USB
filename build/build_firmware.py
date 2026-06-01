@@ -50,7 +50,7 @@ import os, struct, zlib, hashlib, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC  = os.path.join(ROOT, "firmware", "Fbv3_v1_02_00.hxf")
-DST  = os.path.join(ROOT, "firmware", "Fbv3_ledcc_v7.hxf")
+DST  = os.path.join(ROOT, "firmware", "Fbv3_ledcc_v9.hxf")
 
 IMAGE_LEN  = 57498
 BASE       = 0x14010000   # flash base: flash_addr = file_offset + BASE
@@ -61,7 +61,14 @@ STUB       = 0x14019bb8   # mode stub (flash) -- right after the 0x48-byte CC ha
 STUB_FOFF  = 0x09bb8      #   "        (file offset)
 HOOK_FOFF  = 0x0c942      # CC-handler detour site (file offset)
 SWLED_FOFF = 0x0c712      # switch-event LED tail-call site (file offset)
-VER_FOFF   = 0x002b4      # last byte of "1.0.2.0.0"
+
+# Branding / version strings (both fixed-size, edited in place).
+LCD_FOFF   = 0x00260      # 14-byte LCD boot banner slot
+LCD_OLD    = b"Fbv 3 v1.02.00"   # stock banner (sanity-checked before overwrite)
+LCD_NEW    = b"FBV Chroma 1.1"   # 14 bytes, same length
+VERSTR_FOFF = 0x002ac     # the "1.0.2.0.0" digits inside "L6Version:..." (9 bytes)
+VERSTR_OLD = b"1.0.2.0.0"        # stock version field
+VERSTR_NEW = b"1.1.0.0.0"        # Line 6 Updater collapses A.B.C.D.E -> A.BC.DE = 1.10.00
 
 # firmware entry points / data we call or reference
 SYSEX   = 0x1401c948      # original SysEx dispatch (tbb) in the inbound consumer
@@ -190,8 +197,15 @@ def main():
     assert bytes(img[SWLED_FOFF:SWLED_FOFF + 4]) == b_t4(0x1401c712, LED_ONOFF, False), \
         "unexpected bytes at switch-LED tail-call; firmware not the expected v1.02.00"
     img[SWLED_FOFF:SWLED_FOFF + 4] = b_t4(0x1401c712, STUB, False)
-    assert img[VER_FOFF] == ord("0")
-    img[VER_FOFF] = ord("1")                                    # 1.0.2.0.0 -> 1.0.2.0.1
+    # LCD boot banner (14-byte slot, same-length swap; terminator at +14 stays put)
+    assert bytes(img[LCD_FOFF:LCD_FOFF + len(LCD_OLD)]) == LCD_OLD and img[LCD_FOFF + 14] == 0, \
+        "unexpected LCD banner; firmware not the expected v1.02.00"
+    assert len(LCD_NEW) == len(LCD_OLD) == 14
+    img[LCD_FOFF:LCD_FOFF + 14] = LCD_NEW
+    # version string in the SysEx identity field (Updater shows it as 1.10.00)
+    assert bytes(img[VERSTR_FOFF:VERSTR_FOFF + len(VERSTR_OLD)]) == VERSTR_OLD
+    assert len(VERSTR_NEW) == len(VERSTR_OLD)
+    img[VERSTR_FOFF:VERSTR_FOFF + len(VERSTR_NEW)] = VERSTR_NEW
     img = bytes(img)
     assert len(img) == IMAGE_LEN
 
