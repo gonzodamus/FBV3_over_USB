@@ -133,7 +133,7 @@ python3 build/build_firmware.py            # writes firmware/Fbv3_Chroma_1.1.hxf
 pip install capstone                        # optional: also disassemble-verifies the patch
 ```
 
-On a Mac you can skip the terminal: double-click **`Build patched firmware (Mac).command`**
+On a Mac you can skip the terminal: double-click **`Build Firmware.command`**
 in Finder. It runs the same build and tells you where the output landed.
 
 `build/build_firmware.py` documents exactly what it changes: a 4-byte detour, a 0x48-byte

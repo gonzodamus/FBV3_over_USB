@@ -42,7 +42,7 @@ building it as easy as a double-click.
    you've run the Line 6 FBV3 Updater before, it's already on your computer (search
    for `Fbv3_v1_02_00.hxf`). Otherwise download the FBV3 firmware update from Line 6.
 3. Put that original file into the project's **`firmware`** folder.
-4. Double-click **`Build patched firmware (Mac).command`**.
+4. Double-click **`Build Firmware.command`**.
    - A window opens, does its thing, and says **Success!**
    - If macOS blocks it the first time ("unidentified developer"), right-click the
      file → **Open** → **Open**, and it'll run.
