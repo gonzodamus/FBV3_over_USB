@@ -2,8 +2,18 @@
 __pycache__/
 *.pyc
 
+# Claude Code / agent session state and worktrees (local only, not for sharing)
+.claude/
+
 # macOS
 .DS_Store
+**/.DS_Store
+
+# Editor / misc
+*.swp
+*~
+.idea/
+.vscode/
 
 # Firmware images are NOT tracked: the stock image is Line 6's copyrighted
 # property and the patched image is a derivative work. They live here locally
