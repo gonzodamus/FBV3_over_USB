@@ -76,7 +76,7 @@ Reference: `sendmidi dev "FBV 3" cc 0 9` lights FS1 steady green.
   needed** (LEDs are plain CC); leaving it off avoids an extra permission prompt.
 - Output port names vary by OS/driver — **match on substring `"FBV 3"`**, don't assume an
   exact string. Handle the device being absent / hot-plugged (`onstatechange`).
-- **Requires the patched firmware** (`Fbv3_ledcc_v5.hxf`, reports version `1.0.2.0.1`).
+- **Requires the patched firmware** (`Fbv3_ledcc_v7.hxf`, reports version `1.0.2.0.1`).
   Stock firmware ignores these CCs, so the app does nothing on an unpatched pedal.
 
 ## Out of scope
@@ -86,13 +86,22 @@ Reference: `sendmidi dev "FBV 3" cc 0 9` lights FS1 steady green.
   reverse-engineered. This app does not touch it.
 - This app does not flash firmware. Flashing is covered in [`README.md`](README.md).
 
+## Footswitch LED mode (CC #16)
+
+CC number **16** is a reserved global toggle for how footswitch LEDs react to presses
+(the LED *color* always comes from the per-LED CCs):
+
+- `cc 16 0` — **inverted** (firmware default): LED lit at rest, dark while pressed.
+- `cc 16 1` — **stock**: LED off at rest, lit only while pressed.
+
+The flag lives in RAM and **resets to inverted (0) on power-up**, so the app should send
+its desired mode on (re)connect (alongside the layout). Index 16 is not a real control.
+
 ## Behavior notes (from the firmware side)
 
 - The CC-set **color** persists (it isn't overwritten by switch presses). The app can
   treat the color it sent as authoritative.
-- Footswitch LEDs are **inverted**: lit (in the USB-set color) when the switch is not
-  pressed, dark while it is held (momentary). So the on/off you send is the *resting*
-  state; physically pressing the switch momentarily blanks that LED. The app generally
-  sends a "steady" state and lets the hardware do the press-blanking.
+- The on/off the app sends is the LED's *resting* state; the firmware momentarily flips it
+  on physical presses according to the CC #16 mode above.
 - Two bytes back the firmware: a **color** byte and an **on/blink** byte. The single CC
   value encodes both (`state*8 + color`), so one message fully sets an LED.

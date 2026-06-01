@@ -11,9 +11,11 @@ patch repurposes the dropped inbound Control Change messages and routes them to 
 firmware's existing LED routine. The image is patched in place (same size), so the
 device's boot integrity check still passes.
 
-It also **inverts the footswitch LEDs**: each LED is lit in its (USB-set) color when the
-switch is *not* pressed, and goes dark *while* the switch is held (momentary). Set a
-color once over USB and the switch lights up in it, blinking off as you stomp.
+It also adds a switchable **footswitch-LED behavior**, toggled over USB (CC #16):
+
+- **Inverted** (default): the LED is lit in its USB-set color when the switch is *not*
+  pressed, and goes dark *while* it's held.
+- **Stock**: the LED is off at rest and lights in its USB-set color only *while* pressed.
 
 Status: **working** on firmware v1.02.00. Patched build reports version `1.0.2.0.1`.
 
@@ -26,7 +28,7 @@ Status: **working** on firmware v1.02.00. Patched build reports version `1.0.2.0
 
 ## Installation (flash the firmware)
 
-1. Flash **`firmware/Fbv3_ledcc_v5.hxf`** with the Line 6 Updater, the same way you'd
+1. Flash **`firmware/Fbv3_ledcc_v7.hxf`** with the Line 6 Updater, the same way you'd
    apply an official update.
 2. The Updater may show a one-time **error → restart**; let it retry. (Our zlib stream
    isn't byte-identical to Line 6's, but the device verifies the *decompressed* image,
@@ -73,6 +75,20 @@ sendmidi dev "FBV 3" cc 2 18     # FS3  -> blinking blue   (16 + 2)
 sendmidi dev "FBV 3" cc 3 0      # FS4  -> off
 ```
 
+### Footswitch LED mode (CC #16)
+
+CC number **16** is reserved as a global mode toggle for how footswitch LEDs react to
+presses (the LED *color* always comes from the per-LED CCs above):
+
+```sh
+sendmidi dev "FBV 3" cc 16 0     # inverted (default): lit at rest, dark while pressed
+sendmidi dev "FBV 3" cc 16 1     # stock: off at rest, lit only while pressed
+```
+
+The mode is a RAM flag, so it **resets to inverted on power-up** — resend `cc 16 1` on
+connect if you want stock mode. (LED index 16 is not a real control; it's just the
+command channel for this flag.)
+
 ## Verify the build
 
 The patched firmware answers a standard MIDI Identity Request and reports its version.
@@ -89,19 +105,19 @@ The patched `.hxf` is reproducible from the stock firmware:
 
 ```sh
 # place your stock firmware here first:  firmware/Fbv3_v1_02_00.hxf
-python3 build/build_firmware.py            # writes firmware/Fbv3_ledcc_v5.hxf
+python3 build/build_firmware.py            # writes firmware/Fbv3_ledcc_v7.hxf
 pip install capstone                        # optional: also disassemble-verifies the patch
 ```
 
-`build/build_firmware.py` documents exactly what it changes (a 4-byte detour, a 46-byte
-CC handler placed in dead space inside the factory self-test routine, a 10-byte LED-invert
+`build/build_firmware.py` documents exactly what it changes (a 4-byte detour, a 0x48-byte
+CC handler placed in dead space inside the factory self-test routine, a 0x1a-byte mode
 stub, a redirect of the switch-event LED call, and a 1-byte version bump). The
 reverse-engineering notes are in [`docs/FBV_LED_FINDINGS.md`](docs/FBV_LED_FINDINGS.md).
 
 ## What this patch changes (and what it costs)
 
 Every edit is made in place, so the firmware image stays the same size and the device's
-boot integrity check still passes (63 bytes changed total).
+boot integrity check still passes (105 bytes changed total).
 
 **Kept — nothing player-facing is lost:**
 - MIDI **out** from the knobs, expression pedal, and footswitches.
@@ -109,13 +125,14 @@ boot integrity check still passes (63 bytes changed total).
 
 **Added / changed behavior:**
 - USB Control Change → footswitch LED color/state (the main feature).
-- **Inverted footswitch LEDs**: lit (in the USB-set color) when not pressed, dark while
-  pressed. This replaces the stock behavior where a switch's LED followed the pressed
-  state directly. The LED *color* you set over USB persists across presses.
+- **Switchable footswitch-LED behavior** via CC #16: *inverted* (default — lit at rest,
+  dark while pressed) or *stock* (off at rest, lit only while pressed). Either way the LED
+  *color* you set over USB persists. The mode flag lives in RAM and resets to inverted on
+  power-up.
 
 **Removed:**
 - The **factory manufacturing self-test** (the "NITEST" button/LCD self-test routine).
-  The CC handler and invert stub are tucked inside that routine's code, so the self-test
+  The CC handler and mode stub are tucked inside that routine's code, so the self-test
   no longer functions. It's an assembly-line diagnostic with no documented end-user way
   to trigger it, so in normal use you don't lose anything you can reach.
 
