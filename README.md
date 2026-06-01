@@ -4,6 +4,8 @@ Light up the footswitch **LEDs** on a **Line 6 FBV3 (MK3)** from your computer o
 Any color, any switch, no Line 6 amp required. Comes with a click-and-pick web editor and a
 one-time firmware update for the pedal.
 
+![The web editor: a row of footswitch lamps in different colors next to a color picker](docs/images/led-editor.png)
+
 > ### 👉 Just want to light up your pedal?
 > **Follow the [Step-by-Step Guide](GUIDE.md).** Plain language, no coding, no terminal.
 > Or open the live editor: **https://gonzodamus.github.io/FBV3_over_USB/** (Chrome or Edge).
