@@ -22,7 +22,7 @@ SOFTWARE.
 
 -------------------------------------------------------------------------------
 
-SCOPE — what this license does and does not cover
+SCOPE: what this license does and does not cover
 
 This MIT license applies ONLY to the original work in this repository: the
 build script (build/), the web application (webapp/), the helper scripts, and

@@ -34,22 +34,22 @@ The patched firmware is a small file (ending in `.hxf`). For legal reasons we ca
 hand it to you ready-made, since it's built from Line 6's own firmware, but we've made
 building it as easy as a double-click.
 
-**On a Mac:**
-
 1. [Download this project](#downloading-this-project) (see bottom of this guide) and
    unzip it.
 2. You also need Line 6's **original** firmware file, named `Fbv3_v1_02_00.hxf`. If
    you've run the Line 6 FBV3 Updater before, it's already on your computer (search
    for `Fbv3_v1_02_00.hxf`). Otherwise download the FBV3 firmware update from Line 6.
 3. Put that original file into the project's **`firmware`** folder.
-4. Double-click **`Build Firmware.command`**.
+4. Double-click the builder for your system:
+   - **Mac:** **`Build Firmware.command`**. If macOS blocks it the first time
+     ("unidentified developer"), right-click the file → **Open** → **Open**.
+   - **Windows:** **`Build Firmware (Windows).bat`**. (Needs
+     [Python 3](https://www.python.org/downloads/); the script tells you if it's missing.)
    - A window opens, does its thing, and says **Success!**
-   - If macOS blocks it the first time ("unidentified developer"), right-click the
-     file → **Open** → **Open**, and it'll run.
 5. Your patched file appears in the `firmware` folder as **`Fbv3_Chroma_1.1.hxf`**.
 
-**On Windows** (or if you prefer the manual way), see
-[Building it yourself](README.md#building-from-source) in the README. It's two lines.
+Prefer the command line? See [Building it yourself](README.md#building-from-source) in
+the README; it's two lines on any system.
 
 ### Step 2: Flash it with the Line 6 Updater
 

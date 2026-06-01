@@ -1,10 +1,10 @@
 # FBV3 LED Editor (web app)
 
 A single-page Web MIDI app that controls the Line 6 FBV3 footswitch **LEDs**. It pairs
-with the firmware patch in this repo — see [`../README.md`](../README.md) for the MIDI
+with the firmware patch in this repo; see [`../README.md`](../README.md) for the MIDI
 protocol (the Usage section) and for flashing.
 
-No build step, no dependencies — just three static files (`index.html`, `styles.css`,
+No build step, no dependencies, just three static files (`index.html`, `styles.css`,
 `app.js`).
 
 ## Run it
@@ -30,8 +30,8 @@ on-screen layout so the hardware matches the editor.
   **color** swatch and a **Steady / Blink** state in the editor below. Every change is
   sent to the pedal immediately as a Control Change.
 - **Invert** (toolbar, far right) is a global toggle sent as `CC 16`. *On* (default, `value 0`) is the
-  inverted behavior — LED lit at rest, dark while the switch is pressed; *Off* (`value 1`)
-  is stock — LED off at rest, lit only while pressed. The choice persists and is re-sent on
+  inverted behavior: LED lit at rest, dark while the switch is pressed. *Off* (`value 1`)
+  is stock: LED off at rest, lit only while pressed. The choice persists and is re-sent on
   connect (the firmware flag resets to inverted on power-up).
 - **Presets** (Rainbow, All white) fill the board with a quick layout.
 - **Scenes** are saved in `localStorage` with *Save current…* and appear as chips on the
@@ -48,4 +48,9 @@ on-screen layout so the hardware matches the editor.
 ## Scope
 
 LED control only. Configuring what each footswitch *sends* lives in Line 6's editor over a
-separate, un-reverse-engineered protocol and is out of scope (see the spec).
+separate, un-reverse-engineered protocol and is out of scope.
+
+The editor covers the LEDs you'd actually set by hand: FS1-5, A-D, and FUNC. The firmware
+also accepts LED indices 9, 10, 11, and 13 (Pedal Volume, Pedal Wah, Tap Tempo,
+Diagnostic) over the same CC scheme; drive those directly with `sendmidi` if you need them
+(see the main README's Usage table).
