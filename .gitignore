@@ -20,9 +20,11 @@ CLAUDE.md
 
 # Firmware images are NOT tracked: the stock image is Line 6's copyrighted
 # property and the patched image is a derivative work. They live here locally
-# and are reproducible with build/build_firmware.py from your own stock copy.
-# Ignore EVERYTHING under firmware/ (any name/extension) except the README, so a
-# stray or mis-extensioned image can never slip in.
-# To track an image anyway (e.g. a private repo): git add -f firmware/<name>
-firmware/*
-!firmware/README.md
+# and are reproducible with manual/build/build_firmware.py from your own stock copy.
+# Belt-and-suspenders: never track a firmware image anywhere in the repo...
+*.hxf
+# ...and ignore EVERYTHING under manual/firmware/ (any name/extension) except the
+# README, so a stray or mis-extensioned image there can never slip in either.
+# To track an image anyway (e.g. a private repo): git add -f manual/firmware/<name>
+manual/firmware/*
+!manual/firmware/README.md

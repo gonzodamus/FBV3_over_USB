@@ -6,16 +6,18 @@ one-time firmware update for the pedal.
 
 ![The web editor: a row of footswitch lamps in different colors next to a color picker](assets/led-editor.png)
 
-## 👉 Just want to light up your pedal?
+## 👉 Start here: use the web app
 
-**Follow the [Step-by-Step Guide](GUIDE.md).** Plain language, no coding, no terminal. It
-walks you through the one-time firmware update, then the live editor at
-**[gonzodamus.github.io/FBV_Chroma](https://gonzodamus.github.io/FBV_Chroma/)**
-(Chrome or Edge). The editor needs the patched firmware first; without it, the page just
-shows "Pedal not found."
+**Open [gonzodamus.github.io/FBV_Chroma](https://gonzodamus.github.io/FBV_Chroma/) in Chrome
+or Edge.** It does everything in your browser, no install and no terminal: it builds the
+patched firmware from your stock file, and once that's flashed it's where you pick each
+footswitch's color. New to this? The [Step-by-Step Guide](GUIDE.md) walks through it in
+plain language. Most people never need anything below this line.
 
-If you're not a developer, the guide is all you need. The rest of this README is the
-technical overview: the MIDI protocol, the command line, and how the patch works.
+---
+
+The rest of this README is the **technical** path: the command-line tools in
+[`manual/`](manual/), the MIDI protocol, and how the patch works.
 
 ## How it works
 
@@ -52,8 +54,8 @@ LEDs themselves) keeps working, and reverting is just reflashing the stock firmw
 
 ## Installation (flash the firmware)
 
-1. In the Line 6 Updater, choose **update from a file** and select
-   **`firmware/Fbv3_Chroma_1.1.hxf`**.
+1. In the Line 6 Updater, choose **update from a file** and select your
+   **`Fbv3_Chroma_1.1.hxf`** (the file the web app or build script produced).
 2. The Updater may show a one-time error and restart partway through. Let it retry. (Our zlib
    stream isn't byte-identical to Line 6's, but the device verifies the *decompressed* image,
    which is correct, so it boots.)
@@ -115,33 +117,37 @@ this flag.)
 
 ## Verify the build
 
-The patched firmware answers a standard MIDI Identity Request and reports its version. With
+The pedal answers a Line 6 version query with an ASCII `L6Version:` string. With
 `receivemidi` (or any MIDI monitor) listening to `FBV 3`:
 
 ```sh
-sendmidi dev "FBV 3" syx hex 7E 7F 06 01     # identity request
-# reply carries the "FBV Chroma 1.1" version marker  <- the modded-build identifier
+sendmidi dev "FBV 3" syx hex 00 01 0C 11 03 07 00   # Line 6 version query
+# reply contains ASCII "L6Version:1.1.0.0.0"  <- the FBV Chroma build (stock is 1.0.2.0.0)
 ```
+
+(This is the same query the web app uses to detect whether your pedal already has the patch.)
 
 ## Building from source
 
-The patched `.hxf` is reproducible from the stock firmware. Put your own copy of
-`Fbv3_v1_02_00.hxf` in `firmware/` first, then:
+The command-line tools live in [`manual/`](manual/). The patched `.hxf` is reproducible
+from the stock firmware: put your own copy of `Fbv3_v1_02_00.hxf` in `manual/firmware/`
+first, then:
 
 ```sh
-python3 build/build_firmware.py            # writes firmware/Fbv3_Chroma_1.1.hxf
+python3 manual/build/build_firmware.py     # writes manual/firmware/Fbv3_Chroma_1.1.hxf
 pip install capstone                        # optional: also disassemble-verifies the patch
 ```
 
 Prefer not to use the terminal? Two no-install options produce the same file:
 
-- **In your browser:** open the [web editor](https://gonzodamus.github.io/FBV_Chroma/),
-  click "First time here? Build the patched firmware", and choose your stock `.hxf`. The
-  patch runs client-side (nothing is uploaded) and downloads `Fbv3_Chroma_1.1.hxf`.
-- **Double-click:** **`Build Firmware.command`** (Mac) or **`Build Firmware (Windows).bat`**
-  (Windows, needs Python). Both run the same build and tell you where the output landed.
+- **In your browser (recommended):** open the [web editor](https://gonzodamus.github.io/FBV_Chroma/),
+  click "Build the patched firmware", and choose your stock `.hxf`. The patch runs
+  client-side (nothing is uploaded) and downloads `Fbv3_Chroma_1.1.hxf`.
+- **Double-click:** **`manual/Build Firmware.command`** (Mac) or
+  **`manual/Build Firmware (Windows).bat`** (Windows, needs Python). Both run the same
+  build and tell you where the output landed.
 
-`build/build_firmware.py` documents exactly what it changes: a 4-byte detour, a 0x48-byte
+`manual/build/build_firmware.py` documents exactly what it changes: a 4-byte detour, a 0x48-byte
 CC handler placed in dead space inside the factory self-test routine, a 0x1a-byte mode
 stub, a redirect of the switch-event LED call, and the version/banner string edits.
 
@@ -150,7 +156,7 @@ stub, a redirect of the switch-event LED call, and the version/banner string edi
 Flashing is reversible. If a build misbehaves, restore the stock firmware:
 
 1. Hold **FS1 + A** while plugging in USB. The LCD shows **Update Mode**.
-2. Flash **`firmware/Fbv3_v1_02_00.hxf`** with the Line 6 Updater.
+2. Flash the original **`Fbv3_v1_02_00.hxf`** with the Line 6 Updater.
 
 The recovery bootloader lives in a separate flash region that this patch never touches.
 

@@ -1,4 +1,4 @@
-# firmware/
+# manual/firmware/
 
 Firmware images live here. They are **not** committed to the repo: the stock image is
 Line 6's copyrighted property, and the patched image is a derivative of it.
@@ -12,6 +12,7 @@ Line 6's copyrighted property, and the patched image is a derivative of it.
 **The build produces:**
 
 - `Fbv3_Chroma_1.1.hxf`: the patched firmware (boots as **FBV Chroma 1.1**), written here
-  by `build/build_firmware.py` (or the double-click `Build Firmware.command`).
+  by `build/build_firmware.py` (or the double-click `Build Firmware.command`), both in
+  this `manual/` folder.
 
-See the top-level [README](../README.md) for the full build and flashing steps.
+See the top-level [README](../../README.md) for the full build and flashing steps.

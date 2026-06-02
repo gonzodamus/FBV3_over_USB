@@ -3,7 +3,7 @@
 /* ----------------------------------------------------------------------------
  * In-browser firmware patcher: stock Line 6 FBV3 v1.02.00 .hxf -> FBV Chroma 1.1.
  *
- * Mirrors build/build_firmware.py exactly (same offsets, same assembled Thumb-2
+ * Mirrors manual/build/build_firmware.py exactly (same offsets, same assembled Thumb-2
  * bytes). Runs entirely client-side; the user's firmware never leaves the page.
  *
  * The .hxf is an IFF container: header[:104] + zlib(deflate) of the 57498-byte
