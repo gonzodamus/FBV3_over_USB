@@ -33,7 +33,8 @@ let inputPort = null;
 // times until a version arrives, then stop.
 let versionPoll = null;
 let versionTries = 0;
-const VERSION_MAX_TRIES = 6;
+let firmwareDetected = false;
+const VERSION_MAX_TRIES = 10;
 const VERSION_RETRY_MS = 700;
 
 const STATE_OFF = 0;
@@ -176,10 +177,11 @@ async function findPort() {
 
   outputPort = out;
 
-  // Listen on the matching input port. Ports must be open() before they pass
-  // traffic; on a warm reload they often start "closed"/"pending", so open()
-  // explicitly (it's async) and only then is the version reply deliverable.
-  if (inp && inp !== inputPort) {
+  // Listen on the matching input port. On a warm reload the input port can show
+  // up a moment AFTER the output (or after this first scan), so binding it is
+  // tracked separately from the output connection.
+  const inputIsNew = inp && inp !== inputPort;
+  if (inputIsNew) {
     inputPort = inp;
     inputPort.onmidimessage = onMidiMessage;
   } else if (!inp) {
@@ -189,17 +191,24 @@ async function findPort() {
   if (out) {
     setStatus('ok', `Connected: ${out.name}`);
     hideBanner();
-    // On a (re)connect, make sure both ports are actually open, then sync state
-    // and query the firmware version. Awaiting open() is what fixes detection
-    // silently failing on refresh (port present but not yet open).
-    if (out.id !== prevId) {
+    const outputIsNew = out.id !== prevId;
+    if (outputIsNew) firmwareDetected = false; // a (re)connected pedal might differ
+    console.debug(`[FBV] findPort: out=${!!out} in=${!!inp} outNew=${outputIsNew} inNew=${inputIsNew} detected=${firmwareDetected}`);
+
+    // Ports must be open() before they pass traffic, and open() is async. Query
+    // the version whenever we have both ports but no detection yet, regardless of
+    // WHICH port just appeared. This covers refresh, where the input port often
+    // arrives after the output and a one-shot "on new output" query would miss it.
+    if (inp && !firmwareDetected && (outputIsNew || inputIsNew)) {
       try {
-        await Promise.all([out.open(), inp ? inp.open() : Promise.resolve()]);
+        await Promise.all([out.open(), inp.open()]);
       } catch (err) {
         console.error('MIDI port open failed', err);
       }
-      sendInvert();
-      sendAll();
+      if (outputIsNew) {
+        sendInvert();
+        sendAll();
+      }
       queryVersion();
     }
   } else {
@@ -210,6 +219,7 @@ async function findPort() {
         'It will be detected automatically when it appears, no reload needed.'
     );
     stopVersionPoll();
+    firmwareDetected = false;
     setFirmwareState('unknown');
   }
 }
@@ -259,6 +269,7 @@ function onMidiMessage(e) {
       const m = text.match(/L6Version:([0-9.]+)/);
       if (m) {
         stopVersionPoll();
+        firmwareDetected = true;
         console.debug(`[FBV] version reply: ${m[1]} (${m[1] === PATCHED_VERSION ? 'patched' : 'stock'})`);
         setFirmwareState(m[1] === PATCHED_VERSION ? 'patched' : 'stock', m[1]);
       }
