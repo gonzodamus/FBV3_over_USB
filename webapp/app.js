@@ -159,28 +159,45 @@ async function initMidi() {
     return;
   }
 
-  midiAccess.onstatechange = () => findPort();
+  midiAccess.onstatechange = () => { findPort(); };
   findPort();
 }
 
-function findPort() {
+async function findPort() {
   const prevId = outputPort ? outputPort.id : null;
-  let found = null;
-  for (const out of midiAccess.outputs.values()) {
-    if (out.name && out.name.includes(PORT_MATCH)) {
-      found = out;
-      break;
-    }
+  let out = null;
+  for (const p of midiAccess.outputs.values()) {
+    if (p.name && p.name.includes(PORT_MATCH)) { out = p; break; }
+  }
+  let inp = null;
+  for (const p of midiAccess.inputs.values()) {
+    if (p.name && p.name.includes(PORT_MATCH)) { inp = p; break; }
   }
 
-  outputPort = found;
-  bindInputPort();
+  outputPort = out;
 
-  if (found) {
-    setStatus('ok', `Connected: ${found.name}`);
+  // Listen on the matching input port. Ports must be open() before they pass
+  // traffic; on a warm reload they often start "closed"/"pending", so open()
+  // explicitly (it's async) and only then is the version reply deliverable.
+  if (inp && inp !== inputPort) {
+    inputPort = inp;
+    inputPort.onmidimessage = onMidiMessage;
+  } else if (!inp) {
+    inputPort = null;
+  }
+
+  if (out) {
+    setStatus('ok', `Connected: ${out.name}`);
     hideBanner();
-    // Newly (re)connected: push the global flag + layout so the pedal matches.
-    if (found.id !== prevId) {
+    // On a (re)connect, make sure both ports are actually open, then sync state
+    // and query the firmware version. Awaiting open() is what fixes detection
+    // silently failing on refresh (port present but not yet open).
+    if (out.id !== prevId) {
+      try {
+        await Promise.all([out.open(), inp ? inp.open() : Promise.resolve()]);
+      } catch (err) {
+        console.error('MIDI port open failed', err);
+      }
       sendInvert();
       sendAll();
       queryVersion();
@@ -197,23 +214,6 @@ function findPort() {
   }
 }
 
-// Bind the matching MIDI *input* port and listen for the version reply.
-function bindInputPort() {
-  let found = null;
-  for (const inp of midiAccess.inputs.values()) {
-    if (inp.name && inp.name.includes(PORT_MATCH)) {
-      found = inp;
-      break;
-    }
-  }
-  if (found && found !== inputPort) {
-    inputPort = found;
-    inputPort.onmidimessage = onMidiMessage;
-  } else if (!found) {
-    inputPort = null;
-  }
-}
-
 // Start (or restart) version detection: send the query now and keep retrying
 // until a reply sets the firmware state or we run out of tries. Retrying is what
 // makes detection survive a warm reload, where the port is ready before the pedal.
@@ -225,10 +225,14 @@ function queryVersion() {
     versionTries++;
     try {
       outputPort.send(VERSION_QUERY);
+      console.debug(`[FBV] version query sent (try ${versionTries})`);
     } catch (err) {
       console.error('version query failed', err);
     }
-    if (versionTries >= VERSION_MAX_TRIES) stopVersionPoll();
+    if (versionTries >= VERSION_MAX_TRIES) {
+      stopVersionPoll();
+      console.debug('[FBV] version query gave up after max tries (no reply received)');
+    }
   };
   attempt();
   versionPoll = setInterval(attempt, VERSION_RETRY_MS);
@@ -255,6 +259,7 @@ function onMidiMessage(e) {
       const m = text.match(/L6Version:([0-9.]+)/);
       if (m) {
         stopVersionPoll();
+        console.debug(`[FBV] version reply: ${m[1]} (${m[1] === PATCHED_VERSION ? 'patched' : 'stock'})`);
         setFirmwareState(m[1] === PATCHED_VERSION ? 'patched' : 'stock', m[1]);
       }
     }
