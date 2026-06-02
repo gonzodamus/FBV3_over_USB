@@ -435,3 +435,9 @@ body {
 .builder__msg { margin: 12px 0 2px; min-height: 1.2em; }
 .builder__msg--ok { color: var(--ok); }
 .builder__msg--error { color: var(--danger); }
+
+/* Detection states: a left accent bar signals firmware status at a glance. */
+.builder--ok { border-left: 4px solid var(--ok); }
+.builder--ok > summary { color: var(--ok); }
+.builder--attention { border-left: 4px solid var(--warn); }
+.builder--attention > summary { color: var(--warn); }
