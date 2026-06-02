@@ -1,7 +1,7 @@
 'use strict';
 
 /* ----------------------------------------------------------------------------
- * FBV3 LED Editor: pure Web MIDI sender.
+ * FBV Chroma LED Editor: pure Web MIDI sender.
  *
  * Protocol (see the project README):
  *   - Output port whose name contains "FBV 3". Channel 1.

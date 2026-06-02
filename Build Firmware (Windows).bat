@@ -7,7 +7,7 @@ REM Work from the folder this script lives in (so double-clicking "just works").
 cd /d "%~dp0"
 
 echo.
-echo FBV3 over USB: firmware builder
+echo FBV Chroma: firmware builder
 echo ===================================
 echo.
 

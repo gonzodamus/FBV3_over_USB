@@ -1,4 +1,4 @@
-# FBV3 LED Editor (web app)
+# FBV Chroma LED Editor (web app)
 
 A single-page Web MIDI app that controls the Line 6 FBV3 footswitch **LEDs**. It pairs
 with the firmware patch in this repo; see [`../README.md`](../README.md) for the MIDI

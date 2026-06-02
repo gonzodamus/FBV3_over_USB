@@ -9,7 +9,7 @@ cd "$(dirname "$0")" || exit 1
 BOLD=$'\033[1m'; GREEN=$'\033[32m'; RED=$'\033[31m'; YELLOW=$'\033[33m'; OFF=$'\033[0m'
 
 echo ""
-echo "${BOLD}FBV3 over USB: firmware builder${OFF}"
+echo "${BOLD}FBV Chroma: firmware builder${OFF}"
 echo "==================================="
 echo ""
 

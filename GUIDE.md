@@ -1,4 +1,4 @@
-# FBV3 LED Control: Step-by-Step Guide
+# FBV Chroma: Step-by-Step Guide
 
 This guide is for **everyone**, no coding needed. By the end, your Line 6 FBV3's
 footswitch lights will be controllable from your computer. Pick any color for any

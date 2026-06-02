@@ -1,4 +1,4 @@
-# FBV3 over USB: footswitch LED control
+# FBV Chroma: USB footswitch LED control for the Line 6 FBV3
 
 Light up the footswitch **LEDs** on a **Line 6 FBV3 (MK3)** from your computer over USB.
 Any color, any switch, no Line 6 amp required. Comes with a click-and-pick web editor and a

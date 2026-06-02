@@ -4,6 +4,9 @@ __pycache__/
 
 # Claude Code / agent session state and worktrees (local only, not for sharing)
 .claude/
+# Agent orientation file: kept local for now, not published while this is a
+# personal project rather than a contributor-facing one.
+CLAUDE.md
 
 # macOS
 .DS_Store
