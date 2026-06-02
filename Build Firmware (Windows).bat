@@ -54,7 +54,7 @@ echo.
 if errorlevel 1 (
   echo.
   echo Something went wrong. Please copy the messages above and open an
-  echo issue on the project's GitHub page so we can help.
+  echo issue on the project's GitHub page.
   echo.
   pause
   exit /b 1

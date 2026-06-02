@@ -65,7 +65,7 @@ if "$PY" build/build_firmware.py; then
 else
   echo ""
   echo "${RED}Something went wrong.${OFF} Please copy the messages above and open an"
-  echo "issue on the project's GitHub page so we can help."
+  echo "issue on the project's GitHub page."
 fi
 
 echo ""
