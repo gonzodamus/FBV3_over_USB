@@ -21,6 +21,26 @@
 
   <div id="banner" class="banner" hidden></div>
 
+  <details id="builder" class="builder">
+    <summary>First time here? Build the patched firmware &rsaquo;</summary>
+    <div class="builder__body">
+      <p>
+        Turn your own copy of the stock Line&nbsp;6 firmware into <strong>FBV Chroma 1.1</strong>,
+        right here in your browser. Nothing is uploaded; the patch happens on your device.
+      </p>
+      <ol>
+        <li>Get Line&nbsp;6's stock firmware file, <code>Fbv3_v1_02_00.hxf</code> (from the Line&nbsp;6 FBV3 Updater, or Line&nbsp;6's site).</li>
+        <li>Choose it below. Your patched <code>Fbv3_Chroma_1.1.hxf</code> downloads automatically.</li>
+        <li>Flash it with the Line&nbsp;6 FBV3 Updater (update <em>from a file</em>).</li>
+      </ol>
+      <label class="builder__pick">
+        <input type="file" id="fwFile" accept=".hxf" />
+        <span class="btn btn--primary">Choose stock .hxf&hellip;</span>
+      </label>
+      <p id="builderMsg" class="builder__msg" role="status"></p>
+    </div>
+  </details>
+
   <section class="toolbar">
     <div class="toolbar__group">
       <button class="btn" data-preset="rainbow">Rainbow</button>
@@ -35,13 +55,15 @@
 
   <footer class="footer">
     <p>
-      Sends <code>Control Change</code> on channel&nbsp;1 &mdash;
+      Sends <code>Control Change</code> on channel&nbsp;1:
       <code>CC#&nbsp;=&nbsp;LED&nbsp;index</code>, <code>value&nbsp;=&nbsp;state&nbsp;&times;&nbsp;8&nbsp;+&nbsp;color</code>.
       Requires the patched firmware (<code>FBV Chroma 1.1</code>) and a Chromium browser
       served over <code>https</code> or <code>localhost</code>.
     </p>
   </footer>
 
+  <script src="md5.js"></script>
+  <script src="patch.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -133,9 +133,13 @@ python3 build/build_firmware.py            # writes firmware/Fbv3_Chroma_1.1.hxf
 pip install capstone                        # optional: also disassemble-verifies the patch
 ```
 
-Prefer not to use the terminal? Double-click **`Build Firmware.command`** (Mac) or
-**`Build Firmware (Windows).bat`** (Windows). Both run the same build and tell you where
-the output landed.
+Prefer not to use the terminal? Two no-install options produce the same file:
+
+- **In your browser:** open the [web editor](https://gonzodamus.github.io/FBV_Chroma/),
+  click "First time here? Build the patched firmware", and choose your stock `.hxf`. The
+  patch runs client-side (nothing is uploaded) and downloads `Fbv3_Chroma_1.1.hxf`.
+- **Double-click:** **`Build Firmware.command`** (Mac) or **`Build Firmware (Windows).bat`**
+  (Windows, needs Python). Both run the same build and tell you where the output landed.
 
 `build/build_firmware.py` documents exactly what it changes: a 4-byte detour, a 0x48-byte
 CC handler placed in dead space inside the factory self-test routine, a 0x1a-byte mode

@@ -30,26 +30,24 @@ There are two parts:
 
 ### Step 1: Get the patched firmware file
 
-The patched firmware is a small file (ending in `.hxf`). For legal reasons we can't
-hand it to you ready-made, since it's built from Line 6's own firmware, but we've made
-building it as easy as a double-click.
+The patched firmware is a small file (ending in `.hxf`). For legal reasons we can't hand
+it to you ready-made, since it's built from Line 6's own firmware, but the web editor can
+build it for you in seconds, with no install.
 
-1. [Download this project](#downloading-this-project) (see bottom of this guide) and
-   unzip it.
-2. You also need Line 6's **original** firmware file, named `Fbv3_v1_02_00.hxf`. If
-   you've run the Line 6 FBV3 Updater before, it's already on your computer (search
-   for `Fbv3_v1_02_00.hxf`). Otherwise download the FBV3 firmware update from Line 6.
-3. Put that original file into the project's **`firmware`** folder.
-4. Double-click the builder for your system:
-   - **Mac:** **`Build Firmware.command`**. If macOS blocks it the first time
-     ("unidentified developer"), right-click the file → **Open** → **Open**.
-   - **Windows:** **`Build Firmware (Windows).bat`**. (Needs
-     [Python 3](https://www.python.org/downloads/); the script tells you if it's missing.)
-   - A window opens, does its thing, and says **Success!**
-5. Your patched file appears in the `firmware` folder as **`Fbv3_Chroma_1.1.hxf`**.
+1. You need Line 6's **original** firmware file, named `Fbv3_v1_02_00.hxf`. If you've run
+   the Line 6 FBV3 Updater before, it's already on your computer (search for
+   `Fbv3_v1_02_00.hxf`). Otherwise download the FBV3 firmware update from Line 6.
+2. Open the editor in Chrome or Edge: **https://gonzodamus.github.io/FBV_Chroma/**
+3. Click **"First time here? Build the patched firmware"** at the top, then **Choose
+   stock .hxf** and pick your `Fbv3_v1_02_00.hxf`.
+4. Your patched **`Fbv3_Chroma_1.1.hxf`** downloads automatically. (The patching happens
+   in your browser; your firmware is never uploaded anywhere.)
 
-Prefer the command line? See [Building it yourself](README.md#building-from-source) in
-the README; it's two lines on any system.
+> Prefer not to use the hosted page? You can build the file on your own machine instead:
+> double-click **`Build Firmware.command`** (Mac) or **`Build Firmware (Windows).bat`**
+> (Windows, needs [Python 3](https://www.python.org/downloads/)) after putting the stock
+> file in the project's `firmware` folder. Command-line details are in the
+> [README](README.md#building-from-source).
 
 ### Step 2: Flash it with the Line 6 Updater
 

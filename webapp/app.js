@@ -563,7 +563,55 @@ function init() {
     btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
   });
 
+  initBuilder();
   initMidi();
+}
+
+/* ---------- Firmware builder (in-browser patcher) ---------- */
+
+function initBuilder() {
+  const input = document.getElementById('fwFile');
+  const msg = document.getElementById('builderMsg');
+  if (!input || !msg) return;
+
+  if (!browserCanPatch()) {
+    msg.textContent =
+      'This browser cannot build firmware (no compression API). Use Chrome or Edge, ' +
+      'or run build/build_firmware.py instead.';
+    msg.className = 'builder__msg builder__msg--error';
+    input.disabled = true;
+    return;
+  }
+
+  input.addEventListener('change', async () => {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    msg.textContent = `Building from ${file.name}…`;
+    msg.className = 'builder__msg';
+    try {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const result = await patchFirmware(bytes);
+      downloadBlob(result.blob, result.name);
+      msg.textContent = `Done. ${result.name} downloaded. Flash it with the Line 6 FBV3 Updater (update from a file).`;
+      msg.className = 'builder__msg builder__msg--ok';
+    } catch (err) {
+      msg.textContent = err && err.message ? err.message : String(err);
+      msg.className = 'builder__msg builder__msg--error';
+    } finally {
+      input.value = ''; // allow re-picking the same file
+    }
+  });
+}
+
+function downloadBlob(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 document.addEventListener('DOMContentLoaded', init);

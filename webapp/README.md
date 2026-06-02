@@ -1,11 +1,12 @@
 # FBV Chroma LED Editor (web app)
 
-A single-page Web MIDI app that controls the Line 6 FBV3 footswitch **LEDs**. It pairs
-with the firmware patch in this repo; see [`../README.md`](../README.md) for the MIDI
-protocol (the Usage section) and for flashing.
+A single-page Web MIDI app that controls the Line 6 FBV3 footswitch **LEDs**, and can
+build the patched firmware in-browser. It pairs with the firmware patch in this repo;
+see [`../README.md`](../README.md) for the MIDI protocol (the Usage section) and for
+flashing.
 
-No build step, no dependencies, just three static files (`index.html`, `styles.css`,
-`app.js`).
+No build step, no dependencies, just static files: `index.html`, `styles.css`, `app.js`,
+plus `patch.js` (in-browser firmware patcher) and `md5.js` (container checksum).
 
 ## Run it
 
@@ -23,6 +24,14 @@ Any static server works (`npx serve`, `php -S localhost:8000`, etc.).
 When prompted, allow the **MIDI** permission. The app finds the output port whose name
 contains `FBV 3` automatically, and whenever the pedal (re)connects it pushes the current
 on-screen layout so the hardware matches the editor.
+
+## Building the firmware (in-browser)
+
+The **"First time here? Build the patched firmware"** section at the top turns a stock
+`Fbv3_v1_02_00.hxf` into `Fbv3_Chroma_1.1.hxf` entirely client-side (via `patch.js` +
+`md5.js` and the browser's native `CompressionStream`). The file is never uploaded. It
+applies the exact same byte edits as `build/build_firmware.py` and verifies the result
+against the known-good image checksum before offering the download.
 
 ## Using it
 
