@@ -22,6 +22,13 @@ const INVERT_KEY = 'fbv3.invert';
 const INVERT_CC = 16;
 let invert = true;
 
+// Firmware version query: Line 6 SysEx the pedal answers with an ASCII
+// "L6Version:A.B.C.D.E" string. Patched = 1.1.0.0.0 (FBV Chroma 1.1),
+// stock = 1.0.2.0.0. Used to decide whether to surface the firmware builder.
+const VERSION_QUERY = [0xf0, 0x00, 0x01, 0x0c, 0x11, 0x03, 0x07, 0x00, 0xf7];
+const PATCHED_VERSION = '1.1.0.0.0';
+let inputPort = null;
+
 const STATE_OFF = 0;
 const STATE_STEADY = 1;
 const STATE_BLINK = 2;
@@ -132,7 +139,8 @@ async function initMidi() {
   }
 
   try {
-    midiAccess = await navigator.requestMIDIAccess({ sysex: false });
+    // sysex:true lets us query the pedal's firmware version (a SysEx message).
+    midiAccess = await navigator.requestMIDIAccess({ sysex: true });
   } catch (err) {
     setStatus('error', 'MIDI access denied');
     showBanner(
@@ -159,6 +167,7 @@ function findPort() {
   }
 
   outputPort = found;
+  bindInputPort();
 
   if (found) {
     setStatus('ok', `Connected: ${found.name}`);
@@ -167,6 +176,7 @@ function findPort() {
     if (found.id !== prevId) {
       sendInvert();
       sendAll();
+      queryVersion();
     }
   } else {
     setStatus('pending', 'Pedal not found');
@@ -175,7 +185,54 @@ function findPort() {
         '(it must be running the patched firmware, <code>FBV Chroma 1.1</code>). ' +
         'It will be detected automatically when it appears, no reload needed.'
     );
+    setFirmwareState('unknown');
   }
+}
+
+// Bind the matching MIDI *input* port and listen for the version reply.
+function bindInputPort() {
+  let found = null;
+  for (const inp of midiAccess.inputs.values()) {
+    if (inp.name && inp.name.includes(PORT_MATCH)) {
+      found = inp;
+      break;
+    }
+  }
+  if (found && found !== inputPort) {
+    inputPort = found;
+    inputPort.onmidimessage = onMidiMessage;
+  } else if (!found) {
+    inputPort = null;
+  }
+}
+
+function queryVersion() {
+  if (outputPort) {
+    try {
+      outputPort.send(VERSION_QUERY);
+    } catch (err) {
+      console.error('version query failed', err);
+    }
+  }
+}
+
+// Parse the pedal's SysEx reply for "L6Version:A.B.C.D.E". A long SysEx reply may
+// arrive split across several onmidimessage events, so accumulate bytes from F0
+// (start) to F7 (end) and scan the assembled buffer.
+let sysexBuf = [];
+function onMidiMessage(e) {
+  for (const b of e.data) {
+    if (b === 0xf0) sysexBuf = [];
+    sysexBuf.push(b);
+    if (b === 0xf7) {
+      const text = String.fromCharCode.apply(null, sysexBuf);
+      sysexBuf = [];
+      const m = text.match(/L6Version:([0-9.]+)/);
+      if (m) setFirmwareState(m[1] === PATCHED_VERSION ? 'patched' : 'stock', m[1]);
+    }
+  }
+  // Cap the buffer so a never-terminated stream can't grow unbounded.
+  if (sysexBuf.length > 4096) sysexBuf = [];
 }
 
 /* ---------- Status / banner ---------- */
@@ -601,6 +658,29 @@ function initBuilder() {
       input.value = ''; // allow re-picking the same file
     }
   });
+}
+
+// Show/hide the firmware builder based on the connected pedal's firmware:
+//   'patched' -> collapse and confirm; 'stock' -> open and prompt; 'unknown' -> show.
+function setFirmwareState(state, version) {
+  const builder = document.getElementById('builder');
+  const summary = document.getElementById('builderSummary');
+  if (!builder || !summary) return;
+
+  if (state === 'patched') {
+    summary.textContent = `✓ FBV Chroma ${version === PATCHED_VERSION ? '1.1' : version} detected. Firmware is up to date.`;
+    builder.open = false;
+    builder.classList.add('builder--ok');
+    builder.classList.remove('builder--attention');
+  } else if (state === 'stock') {
+    summary.textContent = 'Your pedal has stock firmware. Build the FBV Chroma patch ›';
+    builder.open = true;
+    builder.classList.add('builder--attention');
+    builder.classList.remove('builder--ok');
+  } else {
+    summary.textContent = 'First time here? Build the patched firmware ›';
+    builder.classList.remove('builder--ok', 'builder--attention');
+  }
 }
 
 function downloadBlob(blob, name) {
