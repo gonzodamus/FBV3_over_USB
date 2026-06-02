@@ -78,7 +78,7 @@ The easiest way is the **online editor**. Just open a link:
 
 1. In **Chrome** or **Edge**, go to:
 
-   **https://gonzodamus.github.io/FBV3_over_USB/**
+   **https://gonzodamus.github.io/FBV_Chroma/**
 
 2. Make sure your FBV3 is plugged in by USB.
 3. The page will ask permission to use **MIDI**. Click **Allow**.

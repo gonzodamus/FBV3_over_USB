@@ -10,7 +10,7 @@ one-time firmware update for the pedal.
 
 **Follow the [Step-by-Step Guide](GUIDE.md).** Plain language, no coding, no terminal. It
 walks you through the one-time firmware update, then the live editor at
-**[gonzodamus.github.io/FBV3_over_USB](https://gonzodamus.github.io/FBV3_over_USB/)**
+**[gonzodamus.github.io/FBV_Chroma](https://gonzodamus.github.io/FBV_Chroma/)**
 (Chrome or Edge). The editor needs the patched firmware first; without it, the page just
 shows "Pedal not found."
 
@@ -48,7 +48,7 @@ LEDs themselves) keeps working, and reverting is just reflashing the stock firmw
 - The **Line 6 FBV3 Updater** (or your usual method) to flash a `.hxf` file.
 - For the command-line usage below: [`sendmidi`](https://github.com/gbevin/SendMIDI)
   (`brew install sendmidi` on macOS; `receivemidi` to read replies). Prefer not to use the
-  terminal? Use the **[web editor](https://gonzodamus.github.io/FBV3_over_USB/)** instead.
+  terminal? Use the **[web editor](https://gonzodamus.github.io/FBV_Chroma/)** instead.
 
 ## Installation (flash the firmware)
 
