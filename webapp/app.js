@@ -634,7 +634,7 @@ function initBuilder() {
   if (!browserCanPatch()) {
     msg.textContent =
       'This browser cannot build firmware (no compression API). Use Chrome or Edge, ' +
-      'or run build/build_firmware.py instead.';
+      'or run manual/build/build_firmware.py instead.';
     msg.className = 'builder__msg builder__msg--error';
     input.disabled = true;
     return;

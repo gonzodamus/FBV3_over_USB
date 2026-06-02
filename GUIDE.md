@@ -44,9 +44,9 @@ build it for you in seconds, with no install.
    in your browser; your firmware is never uploaded anywhere.)
 
 > Prefer not to use the hosted page? You can build the file on your own machine instead:
-> double-click **`Build Firmware.command`** (Mac) or **`Build Firmware (Windows).bat`**
+> double-click **`manual/Build Firmware.command`** (Mac) or **`manual/Build Firmware (Windows).bat`**
 > (Windows, needs [Python 3](https://www.python.org/downloads/)) after putting the stock
-> file in the project's `firmware` folder. Command-line details are in the
+> file in the `manual/firmware` folder. Command-line details are in the
 > [README](README.md#building-from-source).
 
 ### Step 2: Flash it with the Line 6 Updater

@@ -30,7 +30,7 @@ on-screen layout so the hardware matches the editor.
 The **"Build the patched firmware"** section at the top turns a stock
 `Fbv3_v1_02_00.hxf` into `Fbv3_Chroma_1.1.hxf` entirely client-side (via `patch.js` +
 `md5.js` and the browser's native `CompressionStream`). The file is never uploaded. It
-applies the exact same byte edits as `build/build_firmware.py` and verifies the result
+applies the exact same byte edits as `manual/build/build_firmware.py` and verifies the result
 against the known-good image checksum before offering the download.
 
 The app also **detects the connected pedal's firmware** (it queries the version over
