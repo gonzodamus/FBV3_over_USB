@@ -200,10 +200,15 @@ async function findPort() {
     // WHICH port just appeared. This covers refresh, where the input port often
     // arrives after the output and a one-shot "on new output" query would miss it.
     if (inp && !firmwareDetected && (outputIsNew || inputIsNew)) {
+      // On a warm reload the browser returns ports that report "open" but whose
+      // data path is stale (a no-op open() won't revive it). Force a close()/open()
+      // cycle to rebuild the connection, which is what a physical replug does.
       try {
+        await Promise.all([out.close(), inp.close()]);
         await Promise.all([out.open(), inp.open()]);
+        console.debug(`[FBV] ports reopened: out=${out.connection}/${out.state} in=${inp.connection}/${inp.state}`);
       } catch (err) {
-        console.error('MIDI port open failed', err);
+        console.error('MIDI port reopen failed', err);
       }
       if (outputIsNew) {
         sendInvert();
@@ -260,6 +265,7 @@ function stopVersionPoll() {
 // (start) to F7 (end) and scan the assembled buffer.
 let sysexBuf = [];
 function onMidiMessage(e) {
+  console.debug('[FBV] MIDI in:', Array.from(e.data, (b) => b.toString(16).padStart(2, '0')).join(' '));
   for (const b of e.data) {
     if (b === 0xf0) sysexBuf = [];
     sysexBuf.push(b);
