@@ -19,27 +19,40 @@ Control Change messages so that a CC sets a footswitch LED's color/state:
                                        4 yellow, 5 pink, 6 orange, 7 white
                    state (value>>3):   0 off, 1 steady (8-15), 2+ blink (16+)
 
-CC #16 is a reserved "mode" command (a global flag in RAM at 0x10001e32):
-    cc 16 0   inverted mode (DEFAULT): footswitch LED lit (in its USB-set color)
-              when NOT pressed, dark while pressed.
-    cc 16 1   stock mode: footswitch LED off at rest, lit (in its USB-set color)
-              only while the switch is pressed.
-The flag lives in RAM, so it resets to inverted (0) on power-up; the host should
-resend `cc 16 1` on connect if stock mode is wanted.
+CC #16 is a reserved "behavior" command that sets, PER LED, how a switch-driven
+LED reacts to its footswitch (color still comes from the per-LED CCs above):
+
+    cc 16 value   ,  value = ledIndex*4 + behavior   (ledIndex 0..13, beh 0..3)
+        behavior 0  on at rest (inverted, DEFAULT): lit when NOT pressed
+        behavior 1  on when pressed (stock): lit only while pressed
+        behavior 2  always on
+        behavior 3  always off
+
+The behavior bits live in RAM (2 bits/LED), so every LED resets to 0 (on at
+rest) on power-up -- i.e. a fresh boot behaves exactly like the unpatched build.
+The host re-sends the desired per-LED behavior on connect.
 
 Mechanism (all edits land in already-programmed .text; image size is unchanged):
   * Detour at flash 0x1401c942 (file 0x0c942): the 4 bytes `str r5,[sp,#4];
     cmp r3,#3` are replaced with `b.w 0x14019b70`.
-  * A CC handler (0x48 bytes) is written into a dead literal pool + body inside
+  * A CC handler (0x78 bytes) is written into a dead literal pool + body inside
     the factory self-test routine at flash 0x14019b70 (file 0x09b70) -- never
-    executed as code, only reached via our detour. It preserves the SysEx path;
-    intercepts CC #16 to write the mode flag; bounds-checks idx<=13; and for a
-    normal CC calls 0x14018c34(idx,color) then 0x14018bcc(idx,state).
-  * Mode stub (0x1a bytes) at flash 0x14019bb8: the switch-event handler's LED
-    tail-call (flash 0x1401c712 `b.w 0x14018bcc`) is redirected here. It reads
-    the mode flag: flag==0 -> invert the switch state (clz/lsr) then set LED
-    (inverted mode); flag!=0 -> pass the switch state straight through (stock
-    mode). Either way it tail-calls 0x14018bcc.
+    executed as code (the routine has no callers), only reached via our detour.
+    It preserves the SysEx path; for CC #16 it decodes idx+behavior, writes that
+    LED's 2 behavior bits, and applies the new rest state immediately; for a
+    normal CC it bounds-checks idx<=13 and calls 0x14018c34(idx,color) then
+    0x14018bcc(idx,state).
+  * Mode stub (0x34 bytes) right after the handler: the switch-event handler's
+    LED tail-call (flash 0x1401c712 `b.w 0x14018bcc`) is redirected here. It
+    reads this LED's 2 behavior bits and computes the on/off byte branchlessly:
+    out = (sw & ~b1) ^ ~b0  (sw = switch state), giving inverted / stock /
+    always-on / always-off for behavior 0 / 1 / 2 / 3. It tail-calls 0x14018bcc.
+
+Per-LED behavior storage: 2 bits/LED in two 16-bit fields placed in proven-free,
+zero-at-boot .bss padding -- the unused tails of two 14-byte LED arrays
+(0x10001e32 for idx 0..7, 0x10001bd2 for idx 8..15). The low .bss has no free
+contiguous 4-byte word (every 4-aligned slot is an array/struct element), but
+these odd-length-array tails are never indexed and are zeroed at boot.
   * LCD boot banner "Fbv 3 v1.02.00" -> "FBV Chroma 1.1" (file 0x00260), and the
     SysEx version field "1.0.2.0.0" -> "1.1.0.0.0" (file 0x002ac), which the Line 6
     Updater shows as 1.10.00.
@@ -58,10 +71,10 @@ DST  = os.path.join(ROOT, "firmware", "Fbv3_Chroma_1.1.hxf")
 IMAGE_LEN  = 57498
 BASE       = 0x14010000   # flash base: flash_addr = file_offset + BASE
 
-CAVE       = 0x14019b70   # CC handler (flash)
+CAVE       = 0x14019b70   # CC handler (flash); the mode stub follows immediately
 CAVE_FOFF  = 0x09b70      #   "        (file offset)
-STUB       = 0x14019bb8   # mode stub (flash) -- right after the 0x48-byte CC handler
-STUB_FOFF  = 0x09bb8      #   "        (file offset)
+CAVE_END   = 0x09c34      # end (exclusive) of the dead self-test fn we may overwrite:
+                          #   the fn body + its pools + trailing nop, no live callers
 HOOK_FOFF  = 0x0c942      # CC-handler detour site (file offset)
 SWLED_FOFF = 0x0c712      # switch-event LED tail-call site (file offset)
 
@@ -78,9 +91,13 @@ SYSEX   = 0x1401c948      # original SysEx dispatch (tbb) in the inbound consume
 LOOP    = 0x1401c912      # inbound consumer loop top (return point)
 SETCOL  = 0x14018c34      # HAL: set LED color    -> 0x10001e24[idx]
 LED_ONOFF = 0x14018bcc    # HAL: set LED on/blink -> 0x10001bc4[idx]
-FLAG    = 0x10001e32      # mode flag: unused tail of the 16-byte color-array slot
+# Per-LED behavior: 2 bits/LED in two 16-bit fields living in proven-free,
+# zero-at-boot .bss padding (the unused tails of two 14-byte LED arrays).
+BEH_A   = 0x10001e32      # behavior bits for LED idx 0..7  (colorattr-array tail)
+BEH_B   = 0x10001bd2      # behavior bits for LED idx 8..15 (onblink-array tail)
+                          # (both share upper half 0x1000, so one movt covers both)
 
-MODE_CC = 16              # CC number reserved for the mode command
+MODE_CC = 16              # CC number reserved for the per-LED behavior command
 LS, NE, HI = 9, 1, 8      # Thumb condition codes
 
 
@@ -109,14 +126,6 @@ def bcc_w(pc, target, cond):
     return struct.pack("<HH", hw1, hw2)
 
 
-def cbnz(pc, target, rn):
-    """Encode Thumb CBNZ (forward only, 0..126)."""
-    off = target - (pc + 4)
-    assert 0 <= off <= 126 and off % 2 == 0, f"cbnz range {off}"
-    i = (off >> 6) & 1; imm5 = (off >> 1) & 0x1F
-    return struct.pack("<H", 0xB900 | (i << 9) | (imm5 << 3) | rn)
-
-
 def movw(rd, imm):
     imm4 = (imm >> 12) & 0xF; i = (imm >> 11) & 1; imm3 = (imm >> 8) & 7; imm8 = imm & 0xFF
     return struct.pack("<HH", 0xF240 | (i << 10) | imm4, (imm3 << 12) | (rd << 8) | imm8)
@@ -129,54 +138,110 @@ def movt(rd, imm):
 
 # ---- patch code ------------------------------------------------------------
 
-def build_handler():
-    """CC handler at CAVE. r3 = CIN-4, r5 = 4-byte USB-MIDI event word (already set
-    by the inbound consumer at 0x1401c940). 0x48 bytes; ends at STUB."""
-    c = CAVE
-    L_normal = c + 0x2a                       # normal-CC path
-    return (
-        bytes.fromhex("0195")                 # str  r5,[sp,#4]   (replicate overwritten insn)
-        + bytes.fromhex("032b")               # cmp  r3,#3
-        + bcc_w(c + 0x04, SYSEX, LS)          # bls.w SYSEX       SysEx -> original dispatch
-        + bytes.fromhex("072b")               # cmp  r3,#7        CC? (CIN 0xB -> r3=7)
-        + bcc_w(c + 0x0a, LOOP, NE)           # bne.w LOOP        not CC -> drop/loop
-        + bytes.fromhex("c5f30744")           # ubfx r4,r5,#16,#8  r4 = CC number (idx)
-        + bytes.fromhex("c5f30766")           # ubfx r6,r5,#24,#8  r6 = CC value
-        + bytes.fromhex("102c")               # cmp  r4,#16        mode command?
-        + bcc_w(c + 0x18, L_normal, NE)       # bne.w .Lnormal
-        + movw(2, FLAG & 0xFFFF)              # movw r2,#:lower16:FLAG
-        + movt(2, (FLAG >> 16) & 0xFFFF)      # movt r2,#:upper16:FLAG
-        + bytes.fromhex("1670")               # strb r6,[r2]       mode flag = value
-        + b_t4(c + 0x26, LOOP, False)         # b.w  LOOP
-        # .Lnormal (c+0x2a):
-        + bytes.fromhex("0d2c")               # cmp  r4,#13        idx in range?
-        + bcc_w(c + 0x2c, LOOP, HI)           # bhi.w LOOP         out of range -> drop
-        + bytes.fromhex("06f00701")           # and  r1,r6,#7      r1 = color
-        + bytes.fromhex("2046")               # mov  r0,r4
-        + b_t4(c + 0x36, SETCOL, True)        # bl   SETCOL        set color
-        + bytes.fromhex("2046")               # mov  r0,r4
-        + bytes.fromhex("c6f3c401")           # ubfx r1,r6,#3,#5   r1 = state = value>>3
-        + b_t4(c + 0x40, LED_ONOFF, True)     # bl   LED_ONOFF     set on/blink
-        + b_t4(c + 0x44, LOOP, False)         # b.w  LOOP
-    )
+def assemble(base, items):
+    """Two-pass assembler so internal branches resolve from live offsets.
+
+    Each item is one of:
+      ("raw", hexstr)      pre-encoded bytes (verified with capstone)
+      ("movw"/"movt", rd, imm)
+      ("b",   target, is_bl)   BL/B.W   via b_t4
+      ("bcc", target, cond)    B<c>.W   via bcc_w
+      ("label", name)          zero-size marker
+    `target` is an int flash address or a label name (str)."""
+    def size(it):
+        if it[0] == "raw":   return len(bytes.fromhex(it[1]))
+        if it[0] == "label": return 0
+        return 4
+    labels, off = {}, 0
+    for it in items:                          # pass 1: label offsets
+        if it[0] == "label": labels[it[1]] = base + off
+        off += size(it)
+    buf, off = bytearray(), 0                  # pass 2: emit
+    for it in items:
+        pc = base + off
+        if   it[0] == "raw":   buf += bytes.fromhex(it[1])
+        elif it[0] == "movw":  buf += movw(it[1], it[2])
+        elif it[0] == "movt":  buf += movt(it[1], it[2])
+        elif it[0] == "b":     buf += b_t4(pc, labels.get(it[1], it[1]), it[2])
+        elif it[0] == "bcc":   buf += bcc_w(pc, labels.get(it[1], it[1]), it[2])
+        off += size(it)
+    return bytes(buf)
 
 
-def build_mode_stub():
-    """Mode stub at STUB. Entered from the switch handler with r0 = LED index,
-    r1 = switch state. 0x1a bytes."""
-    s = STUB
-    L_stock = s + 0x16                        # stock-mode path
-    return (
-        movw(2, FLAG & 0xFFFF)                # movw r2,#:lower16:FLAG
-        + movt(2, (FLAG >> 16) & 0xFFFF)      # movt r2,#:upper16:FLAG
-        + bytes.fromhex("1378")               # ldrb r3,[r2]       r3 = mode flag
-        + cbnz(s + 0x0a, L_stock, 3)          # cbnz r3,.Lstock    flag!=0 -> stock
-        + bytes.fromhex("b1fa81f1")           # clz  r1,r1         } invert the
-        + bytes.fromhex("4909")               # lsrs r1,r1,#5      } switch state
-        + b_t4(s + 0x12, LED_ONOFF, False)    # b.w  LED_ONOFF     inverted: set LED
-        # .Lstock (s+0x16):
-        + b_t4(s + 0x16, LED_ONOFF, False)    # b.w  LED_ONOFF     stock: pass state through
-    )
+def build_handler(cave):
+    """CC handler at `cave`. r3 = CIN-4, r5 = 4-byte USB-MIDI event word (already
+    set by the inbound consumer at 0x1401c940). The mode stub follows it."""
+    return assemble(cave, [
+        ("raw", "0195"),                  # str  r5,[sp,#4]    replicate overwritten insn
+        ("raw", "032b"),                  # cmp  r3,#3
+        ("bcc", SYSEX, LS),               # bls.w SYSEX        SysEx -> original dispatch
+        ("raw", "072b"),                  # cmp  r3,#7         CC? (CIN 0xB -> r3=7)
+        ("bcc", LOOP, NE),                # bne.w LOOP         not CC -> drop/loop
+        ("raw", "c5f30744"),              # ubfx r4,r5,#16,#8  r4 = CC number (idx)
+        ("raw", "c5f30766"),              # ubfx r6,r5,#24,#8  r6 = CC value
+        ("raw", "102c"),                  # cmp  r4,#16        behavior command?
+        ("bcc", "Lnormal", NE),           # bne.w .Lnormal
+        # ---- CC #16: set this LED's 2 behavior bits (value = idx*4 + behavior) ----
+        ("raw", "c6f38300"),              # ubfx r0,r6,#2,#4   r0 = idx = value>>2 (0..15)
+        ("raw", "0728"),                  # cmp  r0,#7         } base = BEH_A if idx<=7
+        ("raw", "94bf"),                  # ite  ls           }        else BEH_B
+        ("movw", 2, BEH_A & 0xFFFF),      # movwls r2,#:lower16:BEH_A
+        ("movw", 2, BEH_B & 0xFFFF),      # movwhi r2,#:lower16:BEH_B
+        ("movt", 2, (BEH_A >> 16) & 0xFFFF),  # movt r2,#0x1000  (BEH_A,BEH_B share upper half)
+        ("raw", "00f00703"),              # and  r3,r0,#7      } shift = (idx & 7) * 2
+        ("raw", "5b00"),                  # lsls r3,r3,#1      }
+        ("raw", "0325"),                  # movs r5,#3         } mask = 3 << shift
+        ("raw", "9d40"),                  # lsls r5,r3         }
+        ("raw", "1188"),                  # ldrh r1,[r2]       old field halfword
+        ("raw", "21ea0501"),              # bic  r1,r1,r5      clear this LED's slot
+        ("raw", "06f00305"),              # and  r5,r6,#3      } set slot = behavior
+        ("raw", "9d40"),                  # lsls r5,r3         }   (behavior << shift)
+        ("raw", "2943"),                  # orrs r1,r5         }
+        ("raw", "1180"),                  # strh r1,[r2]       store field
+        ("raw", "06f00101"),              # and  r1,r6,#1      } rest state = !(behavior & 1)
+        ("raw", "81f00101"),              # eor  r1,r1,#1      }   (apply immediately)
+        ("b", LED_ONOFF, True),           # bl   LED_ONOFF(idx, rest)
+        ("b", LOOP, False),               # b.w  LOOP
+        # ---- normal CC: set color + on/blink state ----
+        ("label", "Lnormal"),
+        ("raw", "0d2c"),                  # cmp  r4,#13        idx in range?
+        ("bcc", LOOP, HI),                # bhi.w LOOP         out of range -> drop
+        ("raw", "06f00701"),              # and  r1,r6,#7      r1 = color
+        ("raw", "2046"),                  # mov  r0,r4
+        ("b", SETCOL, True),              # bl   SETCOL        set color
+        ("raw", "2046"),                  # mov  r0,r4
+        ("raw", "c6f3c401"),              # ubfx r1,r6,#3,#5   r1 = state = value>>3
+        ("b", LED_ONOFF, True),           # bl   LED_ONOFF     set on/blink
+        ("b", LOOP, False),               # b.w  LOOP
+    ])
+
+
+def build_mode_stub(stub):
+    """Mode stub at `stub`. Entered (tail-call, lr preserved) from the switch
+    handler with r0 = LED index, r1 = switch state (0/1). Reads this LED's 2
+    behavior bits and computes the on/off byte branchlessly:
+        out = (sw & ~b1) ^ ~b0     -> inverted / stock / always-on / always-off
+    for behavior 0 / 1 / 2 / 3. Tail-calls LED_ONOFF(idx, out). Uses only
+    r1/r2/r3 (r0 preserved; no bl, so lr stays valid for the tail-call)."""
+    return assemble(stub, [
+        ("raw", "0728"),                  # cmp  r0,#7         } base = BEH_A if idx<=7
+        ("raw", "94bf"),                  # ite  ls           }        else BEH_B
+        ("movw", 2, BEH_A & 0xFFFF),      # movwls r2,#:lower16:BEH_A
+        ("movw", 2, BEH_B & 0xFFFF),      # movwhi r2,#:lower16:BEH_B
+        ("movt", 2, (BEH_A >> 16) & 0xFFFF),  # movt r2,#0x1000
+        ("raw", "00f00703"),              # and  r3,r0,#7      } shift = (idx & 7) * 2
+        ("raw", "5b00"),                  # lsls r3,r3,#1      }
+        ("raw", "1288"),                  # ldrh r2,[r2]       field halfword
+        ("raw", "da40"),                  # lsrs r2,r3         r2 >>= shift
+        ("raw", "02f00302"),              # and  r2,r2,#3      r2 = behavior (0..3)
+        ("raw", "5308"),                  # lsrs r3,r2,#1      } r3 = ~b1 (bit0)
+        ("raw", "83f00103"),              # eor  r3,r3,#1      }
+        ("raw", "1940"),                  # ands r1,r3         r1 = sw & ~b1
+        ("raw", "02f00102"),              # and  r2,r2,#1      } r2 = ~b0
+        ("raw", "82f00102"),              # eor  r2,r2,#1      }
+        ("raw", "5140"),                  # eors r1,r2         r1 = out = (sw & ~b1) ^ ~b0
+        ("b", LED_ONOFF, False),          # b.w  LED_ONOFF(idx, out)
+    ])
 
 
 def main():
@@ -187,11 +252,12 @@ def main():
     img = bytearray(zlib.decompress(raw[104:]))
     assert len(img) == IMAGE_LEN, f"unexpected image size {len(img)}"
 
-    handler = build_handler()
-    stub = build_mode_stub()
-    assert len(handler) == 0x48, hex(len(handler))
-    assert len(stub) == 0x1a, hex(len(stub))
-    assert CAVE_FOFF + len(handler) == STUB_FOFF, "handler overruns stub"
+    handler = build_handler(CAVE)
+    STUB      = CAVE + len(handler)        # mode stub follows the handler
+    STUB_FOFF = CAVE_FOFF + len(handler)
+    stub = build_mode_stub(STUB)
+    assert CAVE_FOFF + len(handler) + len(stub) <= CAVE_END, \
+        f"handler+stub ({len(handler)+len(stub)} bytes) overruns the dead self-test fn"
 
     img[CAVE_FOFF:CAVE_FOFF + len(handler)] = handler             # CC handler
     img[STUB_FOFF:STUB_FOFF + len(stub)] = stub                  # mode stub
@@ -231,6 +297,13 @@ def main():
     print(f"  decompressed size : {len(vd)}  md5 {hashlib.md5(vd).hexdigest()}")
     print(f"  version string    : {vd[0x2a2:0x2b5].decode()}")
     print(f"  container verified : {ok}")
+
+    # values to mirror into webapp/patch.js (it hard-codes these, byte-for-byte)
+    print("  webapp/patch.js mirror:")
+    print(f"    handler.off 0x{CAVE_FOFF:05x}  hex {handler.hex()}")
+    print(f"    stub.off    0x{STUB_FOFF:05x}  hex {stub.hex()}")
+    print(f"    swled.hex   {b_t4(0x1401c712, STUB, False).hex()}  (expect {b_t4(0x1401c712, LED_ONOFF, False).hex()})")
+    print(f"    EXPECT_MD5  {hashlib.md5(vd).hexdigest()}")
 
     # optional disassembly check + branch-boundary validation
     try:

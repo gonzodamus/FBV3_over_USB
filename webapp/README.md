@@ -38,10 +38,11 @@ against the known-good image checksum before offering the download.
 - The LEDs are laid out like the pedal. **Click a lamp to select it**, then pick a
   **color** swatch and a **Steady / Blink** state in the editor below. Every change is
   sent to the pedal immediately as a Control Change.
-- **Invert** (toolbar, far right) is a global toggle sent as `CC 16`. *On* (default, `value 0`) is the
-  inverted behavior: LED lit at rest, dark while the switch is pressed. *Off* (`value 1`)
-  is stock: LED off at rest, lit only while pressed. The choice persists and is re-sent on
-  connect (the firmware flag resets to inverted on power-up).
+- **Behavior** (per LED) controls how a switch LED reacts to its footswitch: *On at rest*
+  (lit when not pressed, the default), *On when pressed*, *Always on*, or *Always off*. Pick
+  it in the editor for the selected lamp, or use **Apply to all** in the toolbar to set every
+  LED at once. Sent as `CC 16` (`value = LED index * 4 + behavior`); the choice persists and is
+  re-sent on connect (the firmware resets every LED to "on at rest" on power-up).
 - **Presets** (Rainbow, All white) fill the board with a quick layout.
 - **Scenes** are saved in `localStorage` with *Save current…* and appear as chips on the
   toolbar next to the presets. Click a chip to apply that scene (sends every LED); click

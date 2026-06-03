@@ -47,8 +47,17 @@
       <button class="btn" data-preset="white">All white</button>
       <span id="sceneChips" class="scene-chips"></span>
     </div>
+    <div class="toolbar__group toolbar__apply-all">
+      <span class="toolbar__label">Apply to all:</span>
+      <select id="behaviorSelect" class="toolbar__select">
+        <option value="0">On at rest</option>
+        <option value="1">On when pressed</option>
+        <option value="2">Always on</option>
+        <option value="3">Always off</option>
+      </select>
+      <button id="applyBehaviorAll" class="btn">Apply to all</button>
+    </div>
     <button id="saveScene" class="btn btn--primary toolbar__save">Save current&hellip;</button>
-    <button id="invertToggle" class="btn btn--toggle" aria-pressed="true">Invert: On</button>
   </section>
 
   <main id="board" class="board"></main>
@@ -57,6 +66,7 @@
     <p>
       Sends <code>Control Change</code> on channel&nbsp;1:
       <code>CC#&nbsp;=&nbsp;LED&nbsp;index</code>, <code>value&nbsp;=&nbsp;state&nbsp;&times;&nbsp;8&nbsp;+&nbsp;color</code>.
+      Behavior: <code>CC&nbsp;16</code>, <code>value&nbsp;=&nbsp;ledIndex&nbsp;&times;&nbsp;4&nbsp;+&nbsp;behavior</code>.
       Requires the patched firmware (<code>FBV Chroma 1.1</code>) and a Chromium browser
       served over <code>https</code> or <code>localhost</code>.
     </p>

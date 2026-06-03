@@ -95,12 +95,14 @@ If you'd rather not use the hosted page, you can run the same editor locally. Se
 - **Rainbow** / **All white** are one-click starting points.
 - **Save current…** stores your layout so you can bring it back later (great for
   different songs or setups).
-- **Invert** (top right) changes how the lights react to your foot:
-  - **On** (default): the switch is **lit** normally and goes **dark while you press it**.
-  - **Off**: the switch is **dark** normally and **lights up while you press it**.
+- **Behavior** (for each switch) controls how the light reacts to your foot:
+  - **On at rest** (default): the switch is **lit** normally and goes **dark while you press it**.
+  - **On when pressed**: the switch is **dark** normally and **lights up while you press it**.
+  - **Always on**: the light **stays lit** no matter what.
+  - **Always off**: the light **stays dark** no matter what.
 
-> **Good to know:** the colors live on the pedal, but the **Invert** setting resets to
-> "On" each time you unplug/power-cycle the pedal. The editor re-sends your setting
+> **Good to know:** the colors live on the pedal, but the **Behavior** resets to
+> "On at rest" each time you unplug/power-cycle the pedal. The editor re-sends your settings
 > automatically whenever it reconnects, so just keep the page open.
 
 ---
