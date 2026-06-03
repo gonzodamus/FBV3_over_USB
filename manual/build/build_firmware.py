@@ -3,9 +3,10 @@
 Build the patched Line 6 FBV3 (MK3) firmware that adds USB LED control.
 
 Input : firmware/Fbv3_v1_02_00.hxf   (stock Line 6 firmware, v1.02.00)
-Output: firmware/Fbv3_Chroma_1.2.hxf (patched: USB MIDI CC -> footswitch LED color,
-                                       with a switchable LED behavior mode; boots as
-                                       "FBV Chroma 1.2")
+Output: firmware/Fbv3_Chroma_1.3.hxf (patched: USB MIDI CC -> footswitch LED color,
+                                       with a switchable LED behavior mode AND
+                                       persistent LED settings; boots as
+                                       "FBV Chroma 1.3")
 
 WHAT THE PATCH DOES
 -------------------
@@ -28,9 +29,37 @@ LED reacts to its footswitch (color still comes from the per-LED CCs above):
         behavior 2  always on
         behavior 3  always off
 
-The behavior bits live in RAM (2 bits/LED), so every LED resets to 0 (on at
-rest) on power-up -- i.e. a fresh boot behaves exactly like the unpatched build.
-The host re-sends the desired per-LED behavior on connect.
+CC #17 is a reserved "save" command (any value): it packs the current per-LED
+color + behavior into the spare bytes of the stock per-control assignment blob
+(the config the pedal already persists to NVM for FBV Control) and calls the
+stock commit-to-NVM routine. On the next power-up a boot hook reads those spare
+bytes back into the LED RAM arrays, so colors/behaviors survive a power-cycle.
+Sending CC #17 reboots the pedal (the stock commit path resets the device).
+
+Without a save, the behavior bits live in RAM and reset to 0 (on at rest) on
+power-up, so a fresh, never-saved boot behaves exactly like the unpatched build.
+
+PERSISTENCE (how CC #17 / the boot hook work)
+---------------------------------------------
+The stock firmware keeps a 170-byte per-control assignment blob in RAM at
+0x10003bfc (17 records x 10 bytes) and persists it to external NVM (region
+0xf0000) via FBV Control's "patch upload". We piggyback on that:
+  * The blob's record byte at offset 9 is 0x00 in every record = spare. We use
+    records 0..13's offset-9 byte (one per LED) to stash `behavior<<3 | color`
+    (max value 0x1f, so the high bit is always clear -- see the validation note).
+  * Save (CC #17): write each LED's packed byte into 0x10003bfc + idx*10 + 9,
+    then `bl 0x1401c1b8` -- the stock commit routine that erases NVM 0xf0000 and
+    writes the 0x10003bfc blob there (vtable driver at 0x10003cfc). The pedal
+    then reboots via the stock path, exactly like a finished patch upload.
+  * Restore (boot): the boot config init `bl 0x1401c774` (at flash 0x140181b0)
+    loads the NVM blob into 0x10003bfc. We detour that call into a cave routine
+    that does the original init, then reads each LED's offset-9 spare back and
+    re-applies color (0x14018c34), behavior bits, and rest state (0x14018bcc).
+
+  Blob validation note: the stock NVM loader (0x1401c73c) rejects the blob if
+  ANY of its 170 bytes has the high bit set (it does a signed-byte scan). Our
+  packed value `behavior<<3 | color` is at most 0x1f, so it never trips this and
+  never corrupts the stored assignment table.
 
 Mechanism (all edits land in already-programmed .text; image size is unchanged):
   * Detour at flash 0x1401c942 (file 0x0c942): the 4 bytes `str r5,[sp,#4];
@@ -47,15 +76,20 @@ Mechanism (all edits land in already-programmed .text; image size is unchanged):
     reads this LED's 2 behavior bits and computes the on/off byte branchlessly:
     out = (sw & ~b1) ^ ~b0  (sw = switch state), giving inverted / stock /
     always-on / always-off for behavior 0 / 1 / 2 / 3. It tail-calls 0x14018bcc.
+  * Restore routine right after the mode stub: reached only via the boot detour
+    at flash 0x140181b0 (was `bl 0x1401c774`). It calls the stock config init,
+    then loops idx 0..13 unpacking each LED's saved color/behavior from the blob.
+  All three live in the same dead factory self-test routine (flash 0x14019b70..
+  0x14019e98, no callers, no data references) -- raising CAVE_END gives the room.
 
 Per-LED behavior storage: 2 bits/LED in two 16-bit fields placed in proven-free,
 zero-at-boot .bss padding -- the unused tails of two 14-byte LED arrays
 (0x10001e32 for idx 0..7, 0x10001bd2 for idx 8..15). The low .bss has no free
 contiguous 4-byte word (every 4-aligned slot is an array/struct element), but
 these odd-length-array tails are never indexed and are zeroed at boot.
-  * LCD boot banner "Fbv 3 v1.02.00" -> "FBV Chroma 1.2" (file 0x00260), and the
-    SysEx version field "1.0.2.0.0" -> "1.2.0.0.0" (file 0x002ac), which the Line 6
-    Updater shows as 1.20.00.
+  * LCD boot banner "Fbv 3 v1.02.00" -> "FBV Chroma 1.3" (file 0x00260), and the
+    SysEx version field "1.0.2.0.0" -> "1.3.0.0.0" (file 0x002ac), which the Line 6
+    Updater shows as 1.30.00.
 
 The .hxf is an IFF container: header[:104] + zlib(level 9) of the 57498-byte
 image. We rebuild it and fix HEAD decompressed-size@36, HEAD MD5@40:56,
@@ -66,25 +100,31 @@ import os, struct, zlib, hashlib, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC  = os.path.join(ROOT, "firmware", "Fbv3_v1_02_00.hxf")
-DST  = os.path.join(ROOT, "firmware", "Fbv3_Chroma_1.2.hxf")
+DST  = os.path.join(ROOT, "firmware", "Fbv3_Chroma_1.3.hxf")
 
 IMAGE_LEN  = 57498
 BASE       = 0x14010000   # flash base: flash_addr = file_offset + BASE
 
-CAVE       = 0x14019b70   # CC handler (flash); the mode stub follows immediately
+CAVE       = 0x14019b70   # CC handler (flash); mode stub + restore routine follow
 CAVE_FOFF  = 0x09b70      #   "        (file offset)
-CAVE_END   = 0x09c34      # end (exclusive) of the dead self-test fn we may overwrite:
-                          #   the fn body + its pools + trailing nop, no live callers
+CAVE_END   = 0x09e98      # end (exclusive) of the dead self-test fn we may overwrite.
+                          #   The fn at flash 0x14019c54 (file 0x09c54) ends with
+                          #   `pop {r4,r5,r6,pc}` at 0x14019e98; the whole span
+                          #   0x09b70..0x09e98 has ZERO callers and ZERO data refs
+                          #   (verified by an image-wide branch + literal-pool scan),
+                          #   so it is free space reached only via our detours. The
+                          #   next, LIVE function (80 callers) starts at 0x14019eb8.
 HOOK_FOFF  = 0x0c942      # CC-handler detour site (file offset)
 SWLED_FOFF = 0x0c712      # switch-event LED tail-call site (file offset)
+BOOT_FOFF  = 0x081b0      # boot config-init call site (was `bl 0x1401c774`) -> restore
 
 # Branding / version strings (both fixed-size, edited in place).
 LCD_FOFF   = 0x00260      # 14-byte LCD boot banner slot
 LCD_OLD    = b"Fbv 3 v1.02.00"   # stock banner (sanity-checked before overwrite)
-LCD_NEW    = b"FBV Chroma 1.2"   # 14 bytes, same length
+LCD_NEW    = b"FBV Chroma 1.3"   # 14 bytes, same length
 VERSTR_FOFF = 0x002ac     # the "1.0.2.0.0" digits inside "L6Version:..." (9 bytes)
 VERSTR_OLD = b"1.0.2.0.0"        # stock version field
-VERSTR_NEW = b"1.2.0.0.0"        # Line 6 Updater collapses A.B.C.D.E -> A.BC.DE = 1.20.00
+VERSTR_NEW = b"1.3.0.0.0"        # Line 6 Updater collapses A.B.C.D.E -> A.BC.DE = 1.30.00
 
 # firmware entry points / data we call or reference
 SYSEX   = 0x1401c948      # original SysEx dispatch (tbb) in the inbound consumer
@@ -97,7 +137,26 @@ BEH_A   = 0x10001e32      # behavior bits for LED idx 0..7  (colorattr-array tai
 BEH_B   = 0x10001bd2      # behavior bits for LED idx 8..15 (onblink-array tail)
                           # (both share upper half 0x1000, so one movt covers both)
 
+# --- persistence (CC #17 save + boot restore) -----------------------------
+# TODO(hardware-batch): the three addresses below were recovered statically
+# (decompiled v1.02.00 image) and are NOT yet confirmed on a live pedal. Verify
+# in the hardware batch before trusting the flash (a wrong flash is recoverable:
+# hold FS1 + A on USB plug-in -> Update Mode -> reflash stock Fbv3_v1_02_00.hxf).
+CFG_BLOB = 0x10003bfc     # RAM working copy of the 17x10 assignment blob. Proven
+                          #   by 0x1401c3c0 (record applier: mla idx*10 + this base)
+                          #   and 0x1401c348 (read-reply builder, checksums 0xaa
+                          #   bytes from this base) -- both reference 0x10003bfc.
+CFG_COMMIT = 0x1401c1b8   # stock commit-to-NVM: erases NVM 0xf0000, writes the
+                          #   0x10003bfc blob there via driver vtable @0x10003cfc.
+                          #   Reached today only by fall-through from the patch-
+                          #   upload applier (0x1401c3c0 -> b.w here); we bl it.
+CFG_INIT = 0x1401c774     # boot config init: sets up the NVM driver and loads the
+                          #   blob (-> 0x1401c73c reads NVM 0xf0000 into 0x10003bfc).
+                          #   Originally `bl`-ed once from flash 0x140181b0.
+
 MODE_CC = 16              # CC number reserved for the per-LED behavior command
+SAVE_CC = 17              # CC number reserved for "save LED settings to NVM"
+N_LEDS  = 14              # LED indices 0..13 get a saved color/behavior byte
 LS, NE, HI = 9, 1, 8      # Thumb condition codes
 
 
@@ -179,6 +238,8 @@ def build_handler(cave):
         ("bcc", LOOP, NE),                # bne.w LOOP         not CC -> drop/loop
         ("raw", "c5f30744"),              # ubfx r4,r5,#16,#8  r4 = CC number (idx)
         ("raw", "c5f30766"),              # ubfx r6,r5,#24,#8  r6 = CC value
+        ("raw", "112c"),                  # cmp  r4,#17        save command?
+        ("bcc", "Lsave", 0),              # beq.w .Lsave       (cond 0 = EQ)
         ("raw", "102c"),                  # cmp  r4,#16        behavior command?
         ("bcc", "Lnormal", NE),           # bne.w .Lnormal
         # ---- CC #16: set this LED's 2 behavior bits (value = idx*4 + behavior) ----
@@ -213,6 +274,44 @@ def build_handler(cave):
         ("raw", "c6f3c401"),              # ubfx r1,r6,#3,#5   r1 = state = value>>3
         ("b", LED_ONOFF, True),           # bl   LED_ONOFF     set on/blink
         ("b", LOOP, False),               # b.w  LOOP
+        # ---- CC #17: pack each LED's color+behavior into the config blob, commit ----
+        # For idx 0..13: spare[idx] (CFG_BLOB + idx*10 + 9) = behavior<<3 | color.
+        #   color    = 0x10001e24[idx] & 7      (current LED color, low 3 bits)
+        #   behavior = (BEH_field >> (2*(idx&7))) & 3
+        # Then bl CFG_COMMIT (erase+write NVM 0xf0000 <- CFG_BLOB; the stock commit
+        # then reboots the pedal). r4 = idx, preserved across the (HAL-free) body.
+        ("label", "Lsave"),
+        ("raw", "0024"),                  # movs r4,#0         idx = 0
+        ("label", "Lsave_loop"),
+        # r1 = color = 0x10001e24[idx] & 7
+        ("movw", 0, 0x1e24),              # movw r0,#:lower16:0x10001e24  (LED color array)
+        ("movt", 0, 0x1000),              # movt r0,#0x1000
+        ("raw", "015d"),                  # ldrb r1,[r0,r4]   r1 = color byte
+        ("raw", "01f00701"),              # and  r1,r1,#7     r1 = color (0..7)
+        # r2 = behavior = (BEH_field >> (2*(idx&7))) & 3   (BEH_A if idx<=7 else BEH_B)
+        ("raw", "072c"),                  # cmp  r4,#7        } base = BEH_A if idx<=7
+        ("raw", "94bf"),                  # ite  ls          }        else BEH_B
+        ("movw", 2, BEH_A & 0xFFFF),      # movwls r2,#:lower16:BEH_A
+        ("movw", 2, BEH_B & 0xFFFF),      # movwhi r2,#:lower16:BEH_B
+        ("movt", 2, (BEH_A >> 16) & 0xFFFF),  # movt r2,#0x1000
+        ("raw", "04f00703"),              # and  r3,r4,#7     } shift = (idx & 7) * 2
+        ("raw", "5b00"),                  # lsls r3,r3,#1     }
+        ("raw", "1288"),                  # ldrh r2,[r2]      field halfword
+        ("raw", "da40"),                  # lsrs r2,r3        r2 >>= shift
+        ("raw", "02f00302"),              # and  r2,r2,#3     r2 = behavior (0..3)
+        ("raw", "41eac201"),              # orr  r1,r1,r2,lsl#3   r1 = behavior<<3 | color
+        # store r1 into CFG_BLOB + idx*10 + 9
+        ("movw", 0, CFG_BLOB & 0xFFFF),   # movw r0,#:lower16:CFG_BLOB
+        ("movt", 0, (CFG_BLOB >> 16) & 0xFFFF),  # movt r0,#0x1000
+        ("raw", "0a23"),                  # movs r3,#10       record stride
+        ("raw", "04fb03f2"),              # mul  r2,r4,r3     r2 = idx*10
+        ("raw", "0932"),                  # adds r2,#9        +9 (spare offset)
+        ("raw", "8154"),                  # strb r1,[r0,r2]   spare[idx] = packed byte
+        ("raw", "0134"),                  # adds r4,#1
+        ("raw", "0e2c"),                  # cmp  r4,#14
+        ("bcc", "Lsave_loop", NE),        # bne.w .Lsave_loop
+        ("b", CFG_COMMIT, True),          # bl   CFG_COMMIT   erase+write NVM, then reboot
+        ("b", LOOP, False),               # b.w  LOOP         (defensive; commit reboots)
     ])
 
 
@@ -244,6 +343,61 @@ def build_mode_stub(stub):
     ])
 
 
+def build_restore(rest):
+    """Boot restore routine at `rest`. Reached only via the detour at flash
+    0x140181b0 (originally `bl CFG_INIT`); the caller has already loaded r0 with
+    the CFG_INIT argument (0x10005dd0 at 0x140181ae). We run the stock config
+    init/load, then for idx 0..13 unpack the saved color/behavior from the blob:
+        packed   = CFG_BLOB[idx*10 + 9]      (behavior<<3 | color, written by save)
+        color    = packed & 7                -> SETCOL(idx, color)
+        behavior = (packed >> 3) & 3         -> store into BEH_A/BEH_B field
+        rest     = !((packed>>3) & 1)        -> LED_ONOFF(idx, rest)
+    SETCOL/LED_ONOFF preserve r4-r6, so idx (r4) and packed (r6) survive the
+    calls. Returns to 0x140181b4 via the pushed lr."""
+    return assemble(rest, [
+        ("raw", "70b5"),                  # push {r4,r5,r6,lr}
+        ("b", CFG_INIT, True),            # bl   CFG_INIT      stock init + NVM blob load
+        ("raw", "0024"),                  # movs r4,#0         idx = 0
+        ("label", "Lr_loop"),
+        # r6 = packed = CFG_BLOB[idx*10 + 9]
+        ("movw", 0, CFG_BLOB & 0xFFFF),   # movw r0,#:lower16:CFG_BLOB
+        ("movt", 0, (CFG_BLOB >> 16) & 0xFFFF),  # movt r0,#0x1000
+        ("raw", "0a23"),                  # movs r3,#10        record stride
+        ("raw", "04fb03f2"),              # mul  r2,r4,r3      r2 = idx*10
+        ("raw", "0932"),                  # adds r2,#9         +9 (spare offset)
+        ("raw", "865c"),                  # ldrb r6,[r0,r2]    r6 = packed byte
+        # set color = packed & 7
+        ("raw", "2046"),                  # mov  r0,r4
+        ("raw", "06f00701"),              # and  r1,r6,#7      r1 = color
+        ("b", SETCOL, True),              # bl   SETCOL(idx, color)
+        # store behavior = (packed>>3)&3 into this LED's 2-bit slot (BEH_A/BEH_B)
+        ("raw", "c6f3c105"),              # ubfx r5,r6,#3,#2   r5 = behavior (0..3)
+        ("raw", "072c"),                  # cmp  r4,#7         } base = BEH_A if idx<=7
+        ("raw", "94bf"),                  # ite  ls           }        else BEH_B
+        ("movw", 2, BEH_A & 0xFFFF),      # movwls r2,#:lower16:BEH_A
+        ("movw", 2, BEH_B & 0xFFFF),      # movwhi r2,#:lower16:BEH_B
+        ("movt", 2, (BEH_A >> 16) & 0xFFFF),  # movt r2,#0x1000
+        ("raw", "04f00703"),              # and  r3,r4,#7      } shift = (idx & 7) * 2
+        ("raw", "5b00"),                  # lsls r3,r3,#1      }
+        ("raw", "0320"),                  # movs r0,#3         } mask = 3 << shift
+        ("raw", "9840"),                  # lsls r0,r3         }
+        ("raw", "1188"),                  # ldrh r1,[r2]       old field halfword
+        ("raw", "21ea0001"),              # bic  r1,r1,r0      clear this LED's slot
+        ("raw", "9d40"),                  # lsls r5,r3         } set slot = behavior<<shift
+        ("raw", "2943"),                  # orrs r1,r5         }
+        ("raw", "1180"),                  # strh r1,[r2]       store field
+        # set rest state = !((packed>>3) & 1)
+        ("raw", "2046"),                  # mov  r0,r4
+        ("raw", "c6f3c001"),              # ubfx r1,r6,#3,#1   r1 = behavior & 1
+        ("raw", "81f00101"),              # eor  r1,r1,#1      r1 = rest = !(behavior & 1)
+        ("b", LED_ONOFF, True),           # bl   LED_ONOFF(idx, rest)
+        ("raw", "0134"),                  # adds r4,#1
+        ("raw", "0e2c"),                  # cmp  r4,#14
+        ("bcc", "Lr_loop", NE),           # bne.w .Lr_loop
+        ("raw", "70bd"),                  # pop  {r4,r5,r6,pc}
+    ])
+
+
 def main():
     if not os.path.exists(SRC):
         sys.exit(f"missing stock firmware: {SRC}\n"
@@ -256,22 +410,32 @@ def main():
     STUB      = CAVE + len(handler)        # mode stub follows the handler
     STUB_FOFF = CAVE_FOFF + len(handler)
     stub = build_mode_stub(STUB)
-    assert CAVE_FOFF + len(handler) + len(stub) <= CAVE_END, \
-        f"handler+stub ({len(handler)+len(stub)} bytes) overruns the dead self-test fn"
+    REST      = STUB + len(stub)           # boot restore routine follows the stub
+    REST_FOFF = STUB_FOFF + len(stub)
+    rest = build_restore(REST)
+    used = len(handler) + len(stub) + len(rest)
+    assert CAVE_FOFF + used <= CAVE_END, \
+        f"handler+stub+restore ({used} bytes) overruns the dead self-test fn " \
+        f"(CAVE has {CAVE_END - CAVE_FOFF} bytes)"
 
     img[CAVE_FOFF:CAVE_FOFF + len(handler)] = handler             # CC handler
     img[STUB_FOFF:STUB_FOFF + len(stub)] = stub                  # mode stub
+    img[REST_FOFF:REST_FOFF + len(rest)] = rest                  # boot restore routine
     img[HOOK_FOFF:HOOK_FOFF + 4] = b_t4(0x1401c942, CAVE, False)  # CC-handler detour
     # redirect the switch-event LED tail-call (stock: b.w 0x14018bcc) through the stub
     assert bytes(img[SWLED_FOFF:SWLED_FOFF + 4]) == b_t4(0x1401c712, LED_ONOFF, False), \
         "unexpected bytes at switch-LED tail-call; firmware not the expected v1.02.00"
     img[SWLED_FOFF:SWLED_FOFF + 4] = b_t4(0x1401c712, STUB, False)
+    # redirect the boot config-init call (stock: bl 0x1401c774) through the restore routine
+    assert bytes(img[BOOT_FOFF:BOOT_FOFF + 4]) == b_t4(0x140181b0, CFG_INIT, True), \
+        "unexpected bytes at boot config-init call; firmware not the expected v1.02.00"
+    img[BOOT_FOFF:BOOT_FOFF + 4] = b_t4(0x140181b0, REST, True)
     # LCD boot banner (14-byte slot, same-length swap; terminator at +14 stays put)
     assert bytes(img[LCD_FOFF:LCD_FOFF + len(LCD_OLD)]) == LCD_OLD and img[LCD_FOFF + 14] == 0, \
         "unexpected LCD banner; firmware not the expected v1.02.00"
     assert len(LCD_NEW) == len(LCD_OLD) == 14
     img[LCD_FOFF:LCD_FOFF + 14] = LCD_NEW
-    # version string in the SysEx identity field (Updater shows it as 1.20.00)
+    # version string in the SysEx identity field (Updater shows it as 1.30.00)
     assert bytes(img[VERSTR_FOFF:VERSTR_FOFF + len(VERSTR_OLD)]) == VERSTR_OLD
     assert len(VERSTR_NEW) == len(VERSTR_OLD)
     img[VERSTR_FOFF:VERSTR_FOFF + len(VERSTR_NEW)] = VERSTR_NEW
@@ -302,17 +466,20 @@ def main():
     print("  webapp/patch.js mirror:")
     print(f"    handler.off 0x{CAVE_FOFF:05x}  hex {handler.hex()}")
     print(f"    stub.off    0x{STUB_FOFF:05x}  hex {stub.hex()}")
+    print(f"    restore.off 0x{REST_FOFF:05x}  hex {rest.hex()}")
     print(f"    swled.hex   {b_t4(0x1401c712, STUB, False).hex()}  (expect {b_t4(0x1401c712, LED_ONOFF, False).hex()})")
+    print(f"    boot.hex    {b_t4(0x140181b0, REST, True).hex()}  (expect {b_t4(0x140181b0, CFG_INIT, True).hex()})")
+    print(f"    cave used   {used} / {CAVE_END - CAVE_FOFF} bytes")
     print(f"    EXPECT_MD5  {hashlib.md5(vd).hexdigest()}")
 
     # optional disassembly check + branch-boundary validation
     try:
         import capstone
         md = capstone.Cs(capstone.CS_ARCH_ARM, capstone.CS_MODE_THUMB)
-        region = bytes(vd[CAVE_FOFF:STUB_FOFF + len(stub)])
+        region = bytes(vd[CAVE_FOFF:REST_FOFF + len(rest)])
         instrs = list(md.disasm(region, CAVE))
         addrs = {i.address for i in instrs}
-        known = {SYSEX, LOOP, SETCOL, LED_ONOFF}
+        known = {SYSEX, LOOP, SETCOL, LED_ONOFF, CFG_COMMIT, CFG_INIT}
         bad = []
         print("  patch disassembly:")
         for i in instrs:

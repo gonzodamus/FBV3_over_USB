@@ -1,7 +1,7 @@
 'use strict';
 
 /* ----------------------------------------------------------------------------
- * In-browser firmware patcher: stock Line 6 FBV3 v1.02.00 .hxf -> FBV Chroma 1.2.
+ * In-browser firmware patcher: stock Line 6 FBV3 v1.02.00 .hxf -> FBV Chroma 1.3.
  *
  * Mirrors manual/build/build_firmware.py exactly (same offsets, same assembled Thumb-2
  * bytes). Runs entirely client-side; the user's firmware never leaves the page.
@@ -20,19 +20,21 @@ const IMAGE_LEN = 57498;
 // Verified assembled patch bytes (identical to build_firmware.py output).
 const PATCH = {
   // file offset -> hex bytes to write (after asserting the expected stock bytes)
-  handler: { off: 0x09b70, hex: '0195032b42f2e886072b42f0ca86c5f30744c5f30766102c40f01f80c6f38300072894bf41f6326241f6d232c1f2000200f007035b0003259d40118821ea050106f003059d402943118006f0010181f00101fff703f802f0a4be0d2c02f2a18606f007012046fff72df82046c6f3c401fef7f4ff02f095be' },
-  stub:    { off: 0x09be8, hex: '072894bf41f6326241f6d232c1f2000200f007035b001288da4002f00302530883f00103194002f0010282f001025140fef7d8bf' },
+  handler: { off: 0x09b70, hex: '0195032b42f2e886072b42f0ca86c5f30744c5f30766112c00f03180102c40f01f80c6f38300072894bf41f6326241f6d232c1f2000200f007035b0003259d40118821ea050106f003059d402943118006f0010181f00101fff700f802f0a1be0d2c02f29e8606f007012046fff72af82046c6f3c401fef7f1ff02f092be002441f62460c1f20000015d01f00701072c94bf41f6326241f6d232c1f2000204f007035b001288da4002f0030241eac20143f6fc30c1f200000a2304fb03f20932815401340e2c7ff4dbaf02f0bdfa02f068be' },
+  stub:    { off: 0x09c42, hex: '072894bf41f6326241f6d232c1f2000200f007035b001288da4002f00302530883f00103194002f0010282f001025140fef7abbf' },
+  restore: { off: 0x09c76, hex: '70b502f07cfd002443f6fc30c1f200000a2304fb03f20932865c204606f00701fef7cdffc6f3c105072c94bf41f6326241f6d232c1f2000204f007035b0003209840118821ea00019d40294311802046c6f3c00181f00101fef77dff01340e2c7ff4d2af70bd' },
   detour:  { off: 0x0c942, hex: 'fdf715b9' },
-  swled:   { off: 0x0c712, hex: 'fdf769ba', expect: 'fcf75bba' }, // redirect switch-LED call -> stub
+  swled:   { off: 0x0c712, hex: 'fdf796ba', expect: 'fcf75bba' }, // redirect switch-LED call -> stub
+  boot:    { off: 0x081b0, hex: '01f061fd', expect: '04f0e0fa' }, // redirect boot config-init -> restore
 };
 // Same-length string edits (ASCII).
-const LCD = { off: 0x00260, old: 'Fbv 3 v1.02.00', neu: 'FBV Chroma 1.2' }; // 14 bytes; terminator at +14
-const VER = { off: 0x002ac, old: '1.0.2.0.0', neu: '1.2.0.0.0' };
+const LCD = { off: 0x00260, old: 'Fbv 3 v1.02.00', neu: 'FBV Chroma 1.3' }; // 14 bytes; terminator at +14
+const VER = { off: 0x002ac, old: '1.0.2.0.0', neu: '1.3.0.0.0' };
 
 // Known-good decompressed-image MD5 of the produced firmware (sanity target).
-const EXPECT_MD5 = 'c7914e9dee0a05e83c18cc5873ebfc66';
+const EXPECT_MD5 = 'b4fd40c11873a1ddefff6be7b39fd3f1';
 
-const OUTPUT_NAME = 'Fbv3_Chroma_1.2.hxf';
+const OUTPUT_NAME = 'Fbv3_Chroma_1.3.hxf';
 
 function hexToBytes(h) {
   const a = new Uint8Array(h.length / 2);
@@ -79,6 +81,7 @@ async function patchFirmware(hxfBytes) {
 
   // Verify the stock anchors before touching anything (refuse wrong firmware).
   if (!bytesEq(img, PATCH.swled.off, hexToBytes(PATCH.swled.expect)) ||
+      !bytesEq(img, PATCH.boot.off, hexToBytes(PATCH.boot.expect)) ||
       !bytesEq(img, LCD.off, ascii(LCD.old)) || img[LCD.off + 14] !== 0 ||
       !bytesEq(img, VER.off, ascii(VER.old))) {
     throw new Error(
@@ -90,8 +93,10 @@ async function patchFirmware(hxfBytes) {
   // Apply the patch (same as build_firmware.py).
   img.set(hexToBytes(PATCH.handler.hex), PATCH.handler.off);
   img.set(hexToBytes(PATCH.stub.hex), PATCH.stub.off);
+  img.set(hexToBytes(PATCH.restore.hex), PATCH.restore.off);
   img.set(hexToBytes(PATCH.detour.hex), PATCH.detour.off);
   img.set(hexToBytes(PATCH.swled.hex), PATCH.swled.off);
+  img.set(hexToBytes(PATCH.boot.hex), PATCH.boot.off);
   img.set(ascii(LCD.neu), LCD.off);
   img.set(ascii(VER.neu), VER.off);
 
