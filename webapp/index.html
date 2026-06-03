@@ -21,16 +21,18 @@
 
   <div id="banner" class="banner" hidden></div>
 
+  <p id="versionNote" class="version-note"></p>
+
   <details id="builder" class="builder">
     <summary>First time here? Build the patched firmware &rsaquo;</summary>
     <div class="builder__body">
       <p>
-        Turn your own copy of the stock Line&nbsp;6 firmware into <strong>FBV Chroma 1.1</strong>,
+        Turn your own copy of the stock Line&nbsp;6 firmware into <strong>FBV Chroma 1.2</strong>,
         right here in your browser. Nothing is uploaded; the patch happens on your device.
       </p>
       <ol>
         <li>Get Line&nbsp;6's stock firmware file, <code>Fbv3_v1_02_00.hxf</code> (from the Line&nbsp;6 FBV3 Updater, or Line&nbsp;6's site).</li>
-        <li>Choose it below. Your patched <code>Fbv3_Chroma_1.1.hxf</code> downloads automatically.</li>
+        <li>Choose it below. Your patched <code>Fbv3_Chroma_1.2.hxf</code> downloads automatically.</li>
         <li>Flash it with the Line&nbsp;6 FBV3 Updater (update <em>from a file</em>).</li>
       </ol>
       <label class="builder__pick">
@@ -47,8 +49,17 @@
       <button class="btn" data-preset="white">All white</button>
       <span id="sceneChips" class="scene-chips"></span>
     </div>
+    <div class="toolbar__group toolbar__apply-all">
+      <span class="toolbar__label">Apply to all:</span>
+      <select id="behaviorSelect" class="toolbar__select">
+        <option value="0">On at rest</option>
+        <option value="1">On when pressed</option>
+        <option value="2">Always on</option>
+        <option value="3">Always off</option>
+      </select>
+      <button id="applyBehaviorAll" class="btn">Apply to all</button>
+    </div>
     <button id="saveScene" class="btn btn--primary toolbar__save">Save current&hellip;</button>
-    <button id="invertToggle" class="btn btn--toggle" aria-pressed="true">Invert: On</button>
   </section>
 
   <main id="board" class="board"></main>
@@ -57,7 +68,8 @@
     <p>
       Sends <code>Control Change</code> on channel&nbsp;1:
       <code>CC#&nbsp;=&nbsp;LED&nbsp;index</code>, <code>value&nbsp;=&nbsp;state&nbsp;&times;&nbsp;8&nbsp;+&nbsp;color</code>.
-      Requires the patched firmware (<code>FBV Chroma 1.1</code>) and a Chromium browser
+      Behavior: <code>CC&nbsp;16</code>, <code>value&nbsp;=&nbsp;ledIndex&nbsp;&times;&nbsp;4&nbsp;+&nbsp;behavior</code>.
+      Requires the patched firmware (<code>FBV Chroma 1.2</code>) and a Chromium browser
       served over <code>https</code> or <code>localhost</code>.
     </p>
   </footer>

@@ -8,19 +8,23 @@
  *   - Control Change. Raw bytes: [0xB0, ledIndex, value]
  *   - CC number = LED index
  *   - CC value  = state * 8 + color   (off => value 0)
+ *   - CC 16: per-LED behavior. Value = ledIndex * 4 + behavior (0-3).
  * -------------------------------------------------------------------------- */
 
 const PORT_MATCH = 'FBV 3';
 const CC_STATUS = 0xB0; // Control Change, channel 1
 const SCENES_KEY = 'fbv3.scenes';
 const LAST_KEY = 'fbv3.lastLayout';
-const INVERT_KEY = 'fbv3.invert';
 
-// Global LED-mode toggle. CC 16: value 0 = inverted (firmware default; LED lit at
-// rest, dark while the switch is pressed), value 1 = stock (LED off at rest, lit
-// only while pressed). `invert === true` maps to value 0.
-const INVERT_CC = 16;
-let invert = true;
+const BEHAVIOR_CC = 16;
+
+// Current firmware build this editor targets. Auto-detecting the pedal's
+// version over USB-MIDI is unreliable, so we show the version (see #versionNote)
+// as guidance for users to self-check and update. An older pedal will not
+// understand the per-LED behavior CCs. Bump alongside patch.js and
+// build_firmware.py.
+const FW_VERSION = 'FBV Chroma 1.2';
+const FW_UPDATER_VERSION = '1.20.00';
 
 const STATE_OFF = 0;
 const STATE_STEADY = 1;
@@ -43,6 +47,15 @@ const COLORS = [
   { id: 5, name: 'Pink', css: '#ff2d95' },
   { id: 6, name: 'Orange', css: '#ff9f0a' },
   { id: 7, name: 'White', css: '#f2f2f7' },
+];
+
+// Per-LED behavior codes. The firmware resets every LED to behavior 0 on
+// power-up. behavior 0 is also the webapp default.
+const BEHAVIORS = [
+  { id: 0, label: 'On at rest' },
+  { id: 1, label: 'On when pressed' },
+  { id: 2, label: 'Always on' },
+  { id: 3, label: 'Always off' },
 ];
 
 // LEDs to control; index === CC number (not contiguous). On-screen placement
@@ -77,7 +90,7 @@ const PAD_ROWS = [
 // indices are not contiguous, so this is an object rather than an array.
 const model = {};
 LEDS.forEach((led) => {
-  model[led.idx] = { state: STATE_OFF, color: 1 /* green */ };
+  model[led.idx] = { state: STATE_OFF, color: 1 /* green */, behavior: 0 };
 });
 
 let midiAccess = null;
@@ -104,18 +117,22 @@ function sendLed(idx) {
   return value;
 }
 
+function sendBehavior(idx) {
+  if (outputPort) {
+    try {
+      outputPort.send([CC_STATUS, BEHAVIOR_CC, idx * 4 + model[idx].behavior]);
+    } catch (err) {
+      console.error(`MIDI send failed for behavior on LED ${idx}`, err);
+    }
+  }
+}
+
 function sendAll() {
   LEDS.forEach((led) => sendLed(led.idx));
 }
 
-function sendInvert() {
-  if (outputPort) {
-    try {
-      outputPort.send([CC_STATUS, INVERT_CC, invert ? 0 : 1]);
-    } catch (err) {
-      console.error('MIDI send failed for invert flag', err);
-    }
-  }
+function sendAllBehaviors() {
+  LEDS.forEach((led) => sendBehavior(led.idx));
 }
 
 /* ---------- MIDI setup ---------- */
@@ -163,16 +180,16 @@ function findPort() {
   if (found) {
     setStatus('ok', `Connected: ${found.name}`);
     hideBanner();
-    // Newly (re)connected: push the global flag + layout so the pedal matches.
+    // Newly (re)connected: push all LED states + behaviors so the pedal matches.
     if (found.id !== prevId) {
-      sendInvert();
       sendAll();
+      sendAllBehaviors();
     }
   } else {
     setStatus('pending', 'Pedal not found');
     showBanner(
-      `<strong>No “${PORT_MATCH}” MIDI output found.</strong> Connect the FBV3 by USB ` +
-        '(it must be running the patched firmware, <code>FBV Chroma 1.1</code>). ' +
+      `<strong>No "${PORT_MATCH}" MIDI output found.</strong> Connect the FBV3 by USB ` +
+        `(it must be running the patched firmware, <code>${FW_VERSION}</code>). ` +
         'It will be detected automatically when it appears, no reload needed.'
     );
   }
@@ -250,7 +267,7 @@ function buildPad(led) {
   return pad;
 }
 
-// The single shared editor: swatches + state, applied to the selected LED.
+// The single shared editor: swatches + state + behavior, applied to the selected LED.
 function buildEditor() {
   const editor = document.createElement('div');
   editor.className = 'editor';
@@ -292,6 +309,19 @@ function buildEditor() {
   }
   row.appendChild(states);
 
+  // Behavior selector: 4 segmented buttons.
+  const behaviors = document.createElement('div');
+  behaviors.className = 'states editor__behaviors';
+  for (const bv of BEHAVIORS) {
+    const btn = document.createElement('button');
+    btn.className = 'state-btn';
+    btn.dataset.behavior = bv.id;
+    btn.textContent = bv.label;
+    btn.addEventListener('click', () => onBehaviorPick(selectedIdx, bv.id));
+    behaviors.appendChild(btn);
+  }
+  row.appendChild(behaviors);
+
   editor.appendChild(row);
   return editor;
 }
@@ -322,6 +352,9 @@ function refreshEditor() {
   dom.board.querySelectorAll('.editor__states .state-btn').forEach((btn) => {
     btn.classList.toggle('state-btn--active', Number(btn.dataset.state) === m.state);
   });
+  dom.board.querySelectorAll('.editor__behaviors .state-btn').forEach((btn) => {
+    btn.classList.toggle('state-btn--active', Number(btn.dataset.behavior) === m.behavior);
+  });
 }
 
 function refreshAll() {
@@ -350,11 +383,22 @@ function onStatePick(idx, stateId) {
   commit(idx);
 }
 
+function onBehaviorPick(idx, behaviorId) {
+  model[idx].behavior = behaviorId;
+  sendBehavior(idx);
+  if (idx === selectedIdx) refreshEditor();
+  saveLast();
+}
+
 // Apply one LED: update its lamp + the editor, push to the pedal, and persist.
 function commit(idx) {
   refreshPad(idx);
   if (idx === selectedIdx) refreshEditor();
   sendLed(idx);
+  // A color/state CC sets the LED on/off directly, which would re-light an
+  // "Always off" LED (or vice versa) until the next footswitch press. For the
+  // absolute behaviors, re-assert so the LED settles to its behavior right away.
+  if (model[idx].behavior >= 2) sendBehavior(idx);
   saveLast();
 }
 
@@ -367,6 +411,7 @@ function applyLayoutToModel(layout) {
     if (idx == null || !model[idx]) return;
     model[idx].state = clampState(s.state);
     model[idx].color = clampColor(s.color);
+    model[idx].behavior = clampBehavior(s.behavior);
   });
 }
 
@@ -374,7 +419,10 @@ function setLayout(layout, { send }) {
   applyLayoutToModel(layout);
   refreshAll();
   saveLast();
-  if (send) sendAll();
+  if (send) {
+    sendAll();
+    sendAllBehaviors();
+  }
 }
 
 /* ---------- Presets ---------- */
@@ -414,11 +462,12 @@ function snapshot() {
     idx: led.idx,
     state: model[led.idx].state,
     color: model[led.idx].color,
+    behavior: model[led.idx].behavior,
   }));
 }
 
 // Render one chip per saved scene, inline with the presets. Clicking the name
-// applies the scene; the × deletes it.
+// applies the scene; the x deletes it.
 function renderScenes() {
   const scenes = getScenes();
   const names = Object.keys(scenes).sort((a, b) => a.localeCompare(b));
@@ -432,13 +481,13 @@ function renderScenes() {
     const apply = document.createElement('button');
     apply.className = 'btn chip__apply';
     apply.textContent = name;
-    apply.title = `Apply scene “${name}”`;
+    apply.title = `Apply scene "${name}"`;
     apply.addEventListener('click', () => applyScene(name));
 
     const del = document.createElement('button');
     del.className = 'chip__del';
-    del.textContent = '×';
-    del.title = `Delete scene “${name}”`;
+    del.textContent = '\xd7';
+    del.title = `Delete scene "${name}"`;
     del.setAttribute('aria-label', `Delete scene ${name}`);
     del.addEventListener('click', () => deleteScene(name));
 
@@ -455,7 +504,7 @@ function saveScene() {
   if (!trimmed) return;
 
   const scenes = getScenes();
-  if (scenes[trimmed] && !confirm(`Overwrite scene “${trimmed}”?`)) return;
+  if (scenes[trimmed] && !confirm(`Overwrite scene "${trimmed}"?`)) return;
 
   scenes[trimmed] = snapshot();
   putScenes(scenes);
@@ -470,42 +519,22 @@ function applyScene(name) {
 }
 
 function deleteScene(name) {
-  if (!confirm(`Delete scene “${name}”?`)) return;
+  if (!confirm(`Delete scene "${name}"?`)) return;
   const scenes = getScenes();
   delete scenes[name];
   putScenes(scenes);
   renderScenes();
 }
 
-/* ---------- Global invert toggle ---------- */
+/* ---------- Apply-to-all behavior ---------- */
 
-function toggleInvert() {
-  invert = !invert;
-  refreshInvert();
-  sendInvert();
-  try {
-    localStorage.setItem(INVERT_KEY, JSON.stringify(invert));
-  } catch {
-    /* ignore quota / private-mode errors */
-  }
-}
-
-function loadInvert() {
-  try {
-    const raw = localStorage.getItem(INVERT_KEY);
-    if (raw != null) invert = JSON.parse(raw) !== false;
-  } catch {
-    /* ignore malformed data */
-  }
-}
-
-function refreshInvert() {
-  const btn = dom.invertToggle;
-  btn.setAttribute('aria-pressed', String(invert));
-  btn.textContent = `Invert: ${invert ? 'On' : 'Off'}`;
-  btn.title = invert
-    ? 'Inverted (default): LED lit at rest, dark while pressed. Click for stock mode.'
-    : 'Stock: LED off at rest, lit only while pressed. Click to restore inverted (default).';
+function applyBehaviorToAll(behaviorId) {
+  LEDS.forEach((led) => {
+    model[led.idx].behavior = behaviorId;
+    sendBehavior(led.idx);
+  });
+  refreshEditor();
+  saveLast();
 }
 
 /* ---------- Last-layout persistence (survive reload) ---------- */
@@ -539,24 +568,37 @@ function clampColor(v) {
   return Number.isInteger(v) && v >= 0 && v <= 7 ? v : 0;
 }
 
+function clampBehavior(v) {
+  v = Number(v);
+  return Number.isInteger(v) && v >= 0 && v <= 3 ? v : 0;
+}
+
 /* ---------- Wire up ---------- */
 
 function init() {
   dom.status = document.getElementById('status');
   dom.banner = document.getElementById('banner');
   dom.board = document.getElementById('board');
-  dom.invertToggle = document.getElementById('invertToggle');
+  dom.behaviorSelect = document.getElementById('behaviorSelect');
+  dom.applyBehaviorAll = document.getElementById('applyBehaviorAll');
   dom.sceneChips = document.getElementById('sceneChips');
   dom.saveScene = document.getElementById('saveScene');
+  dom.versionNote = document.getElementById('versionNote');
+
+  dom.versionNote.innerHTML =
+    `Latest firmware: <strong>${FW_VERSION}</strong> ` +
+    `(Line 6 Updater shows ${FW_UPDATER_VERSION}; the pedal shows it on screen at startup). ` +
+    `On an older version? Per-LED behavior needs ${FW_VERSION}: rebuild below and reflash.`;
 
   loadLast();
-  loadInvert();
   buildBoard();
   refreshAll();
-  refreshInvert();
   renderScenes();
 
-  dom.invertToggle.addEventListener('click', toggleInvert);
+  dom.applyBehaviorAll.addEventListener('click', () => {
+    const behaviorId = Number(dom.behaviorSelect.value);
+    applyBehaviorToAll(behaviorId);
+  });
   dom.saveScene.addEventListener('click', saveScene);
 
   document.querySelectorAll('[data-preset]').forEach((btn) => {
@@ -586,7 +628,7 @@ function initBuilder() {
   input.addEventListener('change', async () => {
     const file = input.files && input.files[0];
     if (!file) return;
-    msg.textContent = `Building from ${file.name}…`;
+    msg.textContent = `Building from ${file.name}...`;
     msg.className = 'builder__msg';
     try {
       const bytes = new Uint8Array(await file.arrayBuffer());

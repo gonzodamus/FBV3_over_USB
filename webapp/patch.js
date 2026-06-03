@@ -1,7 +1,7 @@
 'use strict';
 
 /* ----------------------------------------------------------------------------
- * In-browser firmware patcher: stock Line 6 FBV3 v1.02.00 .hxf -> FBV Chroma 1.1.
+ * In-browser firmware patcher: stock Line 6 FBV3 v1.02.00 .hxf -> FBV Chroma 1.2.
  *
  * Mirrors manual/build/build_firmware.py exactly (same offsets, same assembled Thumb-2
  * bytes). Runs entirely client-side; the user's firmware never leaves the page.
@@ -20,19 +20,19 @@ const IMAGE_LEN = 57498;
 // Verified assembled patch bytes (identical to build_firmware.py output).
 const PATCH = {
   // file offset -> hex bytes to write (after asserting the expected stock bytes)
-  handler: { off: 0x09b70, hex: '0195032b42f2e886072b42f0ca86c5f30744c5f30766102c40f0078041f63262c1f20002167002f0bcbe0d2c02f2b98606f007012046fff745f82046c6f3c401fff70cf802f0adbe' },
-  stub:    { off: 0x09bb8, hex: '41f63262c1f20002137823b9b1fa81f14909fef7ffbffef7fdbf' },
+  handler: { off: 0x09b70, hex: '0195032b42f2e886072b42f0ca86c5f30744c5f30766102c40f01f80c6f38300072894bf41f6326241f6d232c1f2000200f007035b0003259d40118821ea050106f003059d402943118006f0010181f00101fff703f802f0a4be0d2c02f2a18606f007012046fff72df82046c6f3c401fef7f4ff02f095be' },
+  stub:    { off: 0x09be8, hex: '072894bf41f6326241f6d232c1f2000200f007035b001288da4002f00302530883f00103194002f0010282f001025140fef7d8bf' },
   detour:  { off: 0x0c942, hex: 'fdf715b9' },
-  swled:   { off: 0x0c712, hex: 'fdf751ba', expect: 'fcf75bba' }, // redirect switch-LED call -> stub
+  swled:   { off: 0x0c712, hex: 'fdf769ba', expect: 'fcf75bba' }, // redirect switch-LED call -> stub
 };
 // Same-length string edits (ASCII).
-const LCD = { off: 0x00260, old: 'Fbv 3 v1.02.00', neu: 'FBV Chroma 1.1' }; // 14 bytes; terminator at +14
-const VER = { off: 0x002ac, old: '1.0.2.0.0', neu: '1.1.0.0.0' };
+const LCD = { off: 0x00260, old: 'Fbv 3 v1.02.00', neu: 'FBV Chroma 1.2' }; // 14 bytes; terminator at +14
+const VER = { off: 0x002ac, old: '1.0.2.0.0', neu: '1.2.0.0.0' };
 
 // Known-good decompressed-image MD5 of the produced firmware (sanity target).
-const EXPECT_MD5 = '0a8229a28c4eab2614f333832ffd13b4';
+const EXPECT_MD5 = 'c7914e9dee0a05e83c18cc5873ebfc66';
 
-const OUTPUT_NAME = 'Fbv3_Chroma_1.1.hxf';
+const OUTPUT_NAME = 'Fbv3_Chroma_1.2.hxf';
 
 function hexToBytes(h) {
   const a = new Uint8Array(h.length / 2);

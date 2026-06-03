@@ -21,8 +21,8 @@ The rest of this README is the **technical** path: the command-line tools in
 
 ## How it works
 
-The patch is built on Line 6 firmware v1.02.00 and boots as **FBV Chroma 1.1** (it shows
-that on the pedal's LCD, and lists as version 1.10 in the Line 6 Updater).
+The patch is built on Line 6 firmware v1.02.00 and boots as **FBV Chroma 1.2** (it shows
+that on the pedal's LCD, and lists as version 1.20 in the Line 6 Updater).
 
 Stock firmware already sends MIDI **out** (knobs, expression pedal, switches) but ignores
 almost all inbound USB MIDI, so the LEDs stay dark without a host amp. This patch reuses the
@@ -30,11 +30,9 @@ dropped inbound Control Change messages and routes them to the firmware's existi
 routine. The image is patched in place at the same size, so the device's boot integrity check
 still passes.
 
-It also adds a switchable footswitch-LED behavior, toggled over USB (CC #16):
-
-- **Inverted** (default): the LED is lit in its USB-set color when the switch is *not*
-  pressed, and goes dark *while* it's held.
-- **Stock**: the LED is off at rest and lights in its USB-set color only *while* pressed.
+It also adds a per-LED **behavior** set over USB (CC #16): each switch LED can be **on at
+rest** (lit when not pressed, the default), **on when pressed**, **always on**, or **always
+off**, independently. So you can light some switches and leave others dark.
 
 ## Tradeoffs
 
@@ -55,7 +53,7 @@ LEDs themselves) keeps working, and reverting is just reflashing the stock firmw
 ## Installation (flash the firmware)
 
 1. In the Line 6 Updater, choose **update from a file** and select your
-   **`Fbv3_Chroma_1.1.hxf`** (the file the web app or build script produced).
+   **`Fbv3_Chroma_1.2.hxf`** (the file the web app or build script produced).
 2. The Updater may show a one-time error and restart partway through. Let it retry. (Our zlib
    stream isn't byte-identical to Line 6's, but the device verifies the *decompressed* image,
    which is correct, so it boots.)
@@ -101,19 +99,30 @@ sendmidi dev "FBV 3" cc 2 18     # FS3  -> blinking blue   (16 + 2)
 sendmidi dev "FBV 3" cc 3 0      # FS4  -> off
 ```
 
-### Footswitch LED mode (CC #16)
+### Per-LED behavior (CC #16)
 
-CC number **16** is reserved as a global toggle for how footswitch LEDs react to presses (the
-LED *color* always comes from the per-LED CCs above):
+CC number **16** sets, per LED, how a switch-driven LED reacts to its footswitch (the LED
+*color* always comes from the per-LED CCs above). The value packs the LED index and a
+behavior code:
+
+    value = LED index * 4 + behavior     (LED index 0-13, behavior 0-3)
+
+| behavior | meaning                                              |
+|---------:|------------------------------------------------------|
+| 0        | on at rest (lit when not pressed, dark while held): the default |
+| 1        | on when pressed (dark at rest, lit while held)       |
+| 2        | always on                                            |
+| 3        | always off                                           |
 
 ```sh
-sendmidi dev "FBV 3" cc 16 0     # inverted (default): lit at rest, dark while pressed
-sendmidi dev "FBV 3" cc 16 1     # stock: off at rest, lit only while pressed
+sendmidi dev "FBV 3" cc 16 3     # FS1 (idx 0)   -> always off        (0*4 + 3)
+sendmidi dev "FBV 3" cc 16 10    # FS3 (idx 2)   -> always on         (2*4 + 2)
+sendmidi dev "FBV 3" cc 16 49    # FUNC (idx 12) -> on when pressed   (12*4 + 1)
 ```
 
-The mode is a RAM flag, so it **resets to inverted on power-up**. Resend `cc 16 1` on connect
-if you want stock mode. (LED index 16 isn't a real control; it's just the command channel for
-this flag.)
+The behavior bits live in RAM (2 bits per LED), so every LED **resets to "on at rest" on
+power-up**, matching the unpatched feel. Resend the behaviors you want on connect. (LED index
+16 isn't a real control; CC #16 is just the command channel.)
 
 ## Verify the build
 
@@ -122,7 +131,7 @@ The pedal answers a Line 6 version query with an ASCII `L6Version:` string. With
 
 ```sh
 sendmidi dev "FBV 3" syx hex 00 01 0C 11 03 07 00   # Line 6 version query
-# reply contains ASCII "L6Version:1.1.0.0.0"  <- the FBV Chroma build (stock is 1.0.2.0.0)
+# reply contains ASCII "L6Version:1.2.0.0.0"  <- the FBV Chroma build (stock is 1.0.2.0.0)
 ```
 
 ## Building from source
@@ -132,7 +141,7 @@ from the stock firmware: put your own copy of `Fbv3_v1_02_00.hxf` in `manual/fir
 first, then:
 
 ```sh
-python3 manual/build/build_firmware.py     # writes manual/firmware/Fbv3_Chroma_1.1.hxf
+python3 manual/build/build_firmware.py     # writes manual/firmware/Fbv3_Chroma_1.2.hxf
 pip install capstone                        # optional: also disassemble-verifies the patch
 ```
 
@@ -140,7 +149,7 @@ Prefer not to use the terminal? Two no-install options produce the same file:
 
 - **In your browser (recommended):** open the [web editor](https://gonzodamus.github.io/FBV_Chroma/),
   click "Build the patched firmware", and choose your stock `.hxf`. The patch runs
-  client-side (nothing is uploaded) and downloads `Fbv3_Chroma_1.1.hxf`.
+  client-side (nothing is uploaded) and downloads `Fbv3_Chroma_1.2.hxf`.
 - **Double-click:** **`manual/Build Firmware.command`** (Mac) or
   **`manual/Build Firmware (Windows).bat`** (Windows, needs Python). Both run the same
   build and tell you where the output landed.

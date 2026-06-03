@@ -95,6 +95,21 @@ body {
   color: var(--text-dim);
 }
 .banner strong { color: var(--text); }
+
+/* Always-visible note telling users the current firmware version to self-check. */
+.version-note {
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+.version-note strong { color: var(--text); }
+
 .banner code {
   background: #000;
   padding: 1px 6px;
@@ -121,11 +136,33 @@ body {
   gap: 8px;
 }
 
-/* Push "Save current…" to the far right of the toolbar. */
+/* Push "Save current..." to the far right of the toolbar. */
 .toolbar__save {
   margin-left: auto;
   font-weight: 600;
 }
+
+.toolbar__apply-all {
+  flex-wrap: nowrap;
+}
+
+.toolbar__select {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: var(--bg-card);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 8px 28px 8px 12px;
+  border-radius: 9px;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239aa0ad'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+.toolbar__select:hover { background-color: var(--bg-card-hi); border-color: #3a4150; }
 
 .toolbar__label {
   color: var(--text-dim);
@@ -334,6 +371,8 @@ body {
 }
 
 .editor__states { width: 100%; }
+
+.editor__behaviors { width: 100%; }
 
 .swatch {
   aspect-ratio: 1;

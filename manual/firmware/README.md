@@ -11,7 +11,7 @@ Line 6's copyrighted property, and the patched image is a derivative of it.
 
 **The build produces:**
 
-- `Fbv3_Chroma_1.1.hxf`: the patched firmware (boots as **FBV Chroma 1.1**), written here
+- `Fbv3_Chroma_1.2.hxf`: the patched firmware (boots as **FBV Chroma 1.2**), written here
   by `build/build_firmware.py` (or the double-click `Build Firmware.command`), both in
   this `manual/` folder.
 

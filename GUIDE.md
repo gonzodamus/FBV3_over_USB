@@ -40,7 +40,7 @@ build it for you in seconds, with no install.
 2. Open the editor in Chrome or Edge: **https://gonzodamus.github.io/FBV_Chroma/**
 3. Click **"First time here? Build the patched firmware"** at the top, then **Choose
    stock .hxf** and pick your `Fbv3_v1_02_00.hxf`.
-4. Your patched **`Fbv3_Chroma_1.1.hxf`** downloads automatically. (The patching happens
+4. Your patched **`Fbv3_Chroma_1.2.hxf`** downloads automatically. (The patching happens
    in your browser; your firmware is never uploaded anywhere.)
 
 > Prefer not to use the hosted page? You can build the file on your own machine instead:
@@ -53,7 +53,7 @@ build it for you in seconds, with no install.
 
 1. Connect the FBV3 to your computer with the USB cable.
 2. Open the **Line 6 FBV3 Updater**.
-3. Choose the option to **update from a file**, and pick your **`Fbv3_Chroma_1.1.hxf`**.
+3. Choose the option to **update from a file**, and pick your **`Fbv3_Chroma_1.2.hxf`**.
 4. Let it run.
    - **You may see a brief "error" and a restart partway through. That's expected.**
      Just let it finish; the pedal checks the file a second way and accepts it.
@@ -62,8 +62,8 @@ build it for you in seconds, with no install.
 > Keep your original `Fbv3_v1_02_00.hxf` handy so you can always go back to stock if you
 > need to (see [If something goes wrong](#if-something-goes-wrong)).
 
-> How to know it worked: when the pedal restarts, its screen shows **"FBV Chroma 1.1"**.
-> (In the Line 6 Updater it lists as version **1.10**.) The lights are controlled from
+> How to know it worked: when the pedal restarts, its screen shows **"FBV Chroma 1.2"**.
+> (In the Line 6 Updater it lists as version **1.20**.) The lights are controlled from
 > the computer now, so move on to Part 2 to see them in action.
 
 ---
@@ -95,12 +95,14 @@ If you'd rather not use the hosted page, you can run the same editor locally. Se
 - **Rainbow** / **All white** are one-click starting points.
 - **Save current…** stores your layout so you can bring it back later (great for
   different songs or setups).
-- **Invert** (top right) changes how the lights react to your foot:
-  - **On** (default): the switch is **lit** normally and goes **dark while you press it**.
-  - **Off**: the switch is **dark** normally and **lights up while you press it**.
+- **Behavior** (for each switch) controls how the light reacts to your foot:
+  - **On at rest** (default): the switch is **lit** normally and goes **dark while you press it**.
+  - **On when pressed**: the switch is **dark** normally and **lights up while you press it**.
+  - **Always on**: the light **stays lit** no matter what.
+  - **Always off**: the light **stays dark** no matter what.
 
-> **Good to know:** the colors live on the pedal, but the **Invert** setting resets to
-> "On" each time you unplug/power-cycle the pedal. The editor re-sends your setting
+> **Good to know:** the colors live on the pedal, but the **Behavior** resets to
+> "On at rest" each time you unplug/power-cycle the pedal. The editor re-sends your settings
 > automatically whenever it reconnects, so just keep the page open.
 
 ---
