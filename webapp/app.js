@@ -18,6 +18,14 @@ const LAST_KEY = 'fbv3.lastLayout';
 
 const BEHAVIOR_CC = 16;
 
+// Current firmware build this editor targets. Auto-detecting the pedal's
+// version over USB-MIDI is unreliable, so we show the version (see #versionNote)
+// as guidance for users to self-check and update. An older pedal will not
+// understand the per-LED behavior CCs. Bump alongside patch.js and
+// build_firmware.py.
+const FW_VERSION = 'FBV Chroma 1.2';
+const FW_UPDATER_VERSION = '1.20.00';
+
 const STATE_OFF = 0;
 const STATE_STEADY = 1;
 const STATE_BLINK = 2;
@@ -181,7 +189,7 @@ function findPort() {
     setStatus('pending', 'Pedal not found');
     showBanner(
       `<strong>No "${PORT_MATCH}" MIDI output found.</strong> Connect the FBV3 by USB ` +
-        '(it must be running the patched firmware, <code>FBV Chroma 1.2</code>). ' +
+        `(it must be running the patched firmware, <code>${FW_VERSION}</code>). ` +
         'It will be detected automatically when it appears, no reload needed.'
     );
   }
@@ -575,6 +583,12 @@ function init() {
   dom.applyBehaviorAll = document.getElementById('applyBehaviorAll');
   dom.sceneChips = document.getElementById('sceneChips');
   dom.saveScene = document.getElementById('saveScene');
+  dom.versionNote = document.getElementById('versionNote');
+
+  dom.versionNote.innerHTML =
+    `Latest firmware: <strong>${FW_VERSION}</strong> ` +
+    `(Line 6 Updater shows ${FW_UPDATER_VERSION}; the pedal shows it on screen at startup). ` +
+    `On an older version? Per-LED behavior needs ${FW_VERSION}: rebuild below and reflash.`;
 
   loadLast();
   buildBoard();
