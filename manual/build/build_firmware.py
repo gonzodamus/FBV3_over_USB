@@ -3,9 +3,9 @@
 Build the patched Line 6 FBV3 (MK3) firmware that adds USB LED control.
 
 Input : firmware/Fbv3_v1_02_00.hxf   (stock Line 6 firmware, v1.02.00)
-Output: firmware/Fbv3_Chroma_1.1.hxf (patched: USB MIDI CC -> footswitch LED color,
+Output: firmware/Fbv3_Chroma_1.2.hxf (patched: USB MIDI CC -> footswitch LED color,
                                        with a switchable LED behavior mode; boots as
-                                       "FBV Chroma 1.1")
+                                       "FBV Chroma 1.2")
 
 WHAT THE PATCH DOES
 -------------------
@@ -53,9 +53,9 @@ zero-at-boot .bss padding -- the unused tails of two 14-byte LED arrays
 (0x10001e32 for idx 0..7, 0x10001bd2 for idx 8..15). The low .bss has no free
 contiguous 4-byte word (every 4-aligned slot is an array/struct element), but
 these odd-length-array tails are never indexed and are zeroed at boot.
-  * LCD boot banner "Fbv 3 v1.02.00" -> "FBV Chroma 1.1" (file 0x00260), and the
-    SysEx version field "1.0.2.0.0" -> "1.1.0.0.0" (file 0x002ac), which the Line 6
-    Updater shows as 1.10.00.
+  * LCD boot banner "Fbv 3 v1.02.00" -> "FBV Chroma 1.2" (file 0x00260), and the
+    SysEx version field "1.0.2.0.0" -> "1.2.0.0.0" (file 0x002ac), which the Line 6
+    Updater shows as 1.20.00.
 
 The .hxf is an IFF container: header[:104] + zlib(level 9) of the 57498-byte
 image. We rebuild it and fix HEAD decompressed-size@36, HEAD MD5@40:56,
@@ -66,7 +66,7 @@ import os, struct, zlib, hashlib, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC  = os.path.join(ROOT, "firmware", "Fbv3_v1_02_00.hxf")
-DST  = os.path.join(ROOT, "firmware", "Fbv3_Chroma_1.1.hxf")
+DST  = os.path.join(ROOT, "firmware", "Fbv3_Chroma_1.2.hxf")
 
 IMAGE_LEN  = 57498
 BASE       = 0x14010000   # flash base: flash_addr = file_offset + BASE
@@ -81,10 +81,10 @@ SWLED_FOFF = 0x0c712      # switch-event LED tail-call site (file offset)
 # Branding / version strings (both fixed-size, edited in place).
 LCD_FOFF   = 0x00260      # 14-byte LCD boot banner slot
 LCD_OLD    = b"Fbv 3 v1.02.00"   # stock banner (sanity-checked before overwrite)
-LCD_NEW    = b"FBV Chroma 1.1"   # 14 bytes, same length
+LCD_NEW    = b"FBV Chroma 1.2"   # 14 bytes, same length
 VERSTR_FOFF = 0x002ac     # the "1.0.2.0.0" digits inside "L6Version:..." (9 bytes)
 VERSTR_OLD = b"1.0.2.0.0"        # stock version field
-VERSTR_NEW = b"1.1.0.0.0"        # Line 6 Updater collapses A.B.C.D.E -> A.BC.DE = 1.10.00
+VERSTR_NEW = b"1.2.0.0.0"        # Line 6 Updater collapses A.B.C.D.E -> A.BC.DE = 1.20.00
 
 # firmware entry points / data we call or reference
 SYSEX   = 0x1401c948      # original SysEx dispatch (tbb) in the inbound consumer
@@ -271,7 +271,7 @@ def main():
         "unexpected LCD banner; firmware not the expected v1.02.00"
     assert len(LCD_NEW) == len(LCD_OLD) == 14
     img[LCD_FOFF:LCD_FOFF + 14] = LCD_NEW
-    # version string in the SysEx identity field (Updater shows it as 1.10.00)
+    # version string in the SysEx identity field (Updater shows it as 1.20.00)
     assert bytes(img[VERSTR_FOFF:VERSTR_FOFF + len(VERSTR_OLD)]) == VERSTR_OLD
     assert len(VERSTR_NEW) == len(VERSTR_OLD)
     img[VERSTR_FOFF:VERSTR_FOFF + len(VERSTR_NEW)] = VERSTR_NEW

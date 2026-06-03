@@ -181,7 +181,7 @@ function findPort() {
     setStatus('pending', 'Pedal not found');
     showBanner(
       `<strong>No "${PORT_MATCH}" MIDI output found.</strong> Connect the FBV3 by USB ` +
-        '(it must be running the patched firmware, <code>FBV Chroma 1.1</code>). ' +
+        '(it must be running the patched firmware, <code>FBV Chroma 1.2</code>). ' +
         'It will be detected automatically when it appears, no reload needed.'
     );
   }

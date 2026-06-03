@@ -1,7 +1,7 @@
 'use strict';
 
 /* ----------------------------------------------------------------------------
- * In-browser firmware patcher: stock Line 6 FBV3 v1.02.00 .hxf -> FBV Chroma 1.1.
+ * In-browser firmware patcher: stock Line 6 FBV3 v1.02.00 .hxf -> FBV Chroma 1.2.
  *
  * Mirrors manual/build/build_firmware.py exactly (same offsets, same assembled Thumb-2
  * bytes). Runs entirely client-side; the user's firmware never leaves the page.
@@ -26,13 +26,13 @@ const PATCH = {
   swled:   { off: 0x0c712, hex: 'fdf769ba', expect: 'fcf75bba' }, // redirect switch-LED call -> stub
 };
 // Same-length string edits (ASCII).
-const LCD = { off: 0x00260, old: 'Fbv 3 v1.02.00', neu: 'FBV Chroma 1.1' }; // 14 bytes; terminator at +14
-const VER = { off: 0x002ac, old: '1.0.2.0.0', neu: '1.1.0.0.0' };
+const LCD = { off: 0x00260, old: 'Fbv 3 v1.02.00', neu: 'FBV Chroma 1.2' }; // 14 bytes; terminator at +14
+const VER = { off: 0x002ac, old: '1.0.2.0.0', neu: '1.2.0.0.0' };
 
 // Known-good decompressed-image MD5 of the produced firmware (sanity target).
-const EXPECT_MD5 = 'a5abc8671f9627d52e9f2898a169289d';
+const EXPECT_MD5 = 'c7914e9dee0a05e83c18cc5873ebfc66';
 
-const OUTPUT_NAME = 'Fbv3_Chroma_1.1.hxf';
+const OUTPUT_NAME = 'Fbv3_Chroma_1.2.hxf';
 
 function hexToBytes(h) {
   const a = new Uint8Array(h.length / 2);

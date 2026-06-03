@@ -21,8 +21,8 @@ The rest of this README is the **technical** path: the command-line tools in
 
 ## How it works
 
-The patch is built on Line 6 firmware v1.02.00 and boots as **FBV Chroma 1.1** (it shows
-that on the pedal's LCD, and lists as version 1.10 in the Line 6 Updater).
+The patch is built on Line 6 firmware v1.02.00 and boots as **FBV Chroma 1.2** (it shows
+that on the pedal's LCD, and lists as version 1.20 in the Line 6 Updater).
 
 Stock firmware already sends MIDI **out** (knobs, expression pedal, switches) but ignores
 almost all inbound USB MIDI, so the LEDs stay dark without a host amp. This patch reuses the
@@ -53,7 +53,7 @@ LEDs themselves) keeps working, and reverting is just reflashing the stock firmw
 ## Installation (flash the firmware)
 
 1. In the Line 6 Updater, choose **update from a file** and select your
-   **`Fbv3_Chroma_1.1.hxf`** (the file the web app or build script produced).
+   **`Fbv3_Chroma_1.2.hxf`** (the file the web app or build script produced).
 2. The Updater may show a one-time error and restart partway through. Let it retry. (Our zlib
    stream isn't byte-identical to Line 6's, but the device verifies the *decompressed* image,
    which is correct, so it boots.)
@@ -131,7 +131,7 @@ The pedal answers a Line 6 version query with an ASCII `L6Version:` string. With
 
 ```sh
 sendmidi dev "FBV 3" syx hex 00 01 0C 11 03 07 00   # Line 6 version query
-# reply contains ASCII "L6Version:1.1.0.0.0"  <- the FBV Chroma build (stock is 1.0.2.0.0)
+# reply contains ASCII "L6Version:1.2.0.0.0"  <- the FBV Chroma build (stock is 1.0.2.0.0)
 ```
 
 ## Building from source
@@ -141,7 +141,7 @@ from the stock firmware: put your own copy of `Fbv3_v1_02_00.hxf` in `manual/fir
 first, then:
 
 ```sh
-python3 manual/build/build_firmware.py     # writes manual/firmware/Fbv3_Chroma_1.1.hxf
+python3 manual/build/build_firmware.py     # writes manual/firmware/Fbv3_Chroma_1.2.hxf
 pip install capstone                        # optional: also disassemble-verifies the patch
 ```
 
@@ -149,7 +149,7 @@ Prefer not to use the terminal? Two no-install options produce the same file:
 
 - **In your browser (recommended):** open the [web editor](https://gonzodamus.github.io/FBV_Chroma/),
   click "Build the patched firmware", and choose your stock `.hxf`. The patch runs
-  client-side (nothing is uploaded) and downloads `Fbv3_Chroma_1.1.hxf`.
+  client-side (nothing is uploaded) and downloads `Fbv3_Chroma_1.2.hxf`.
 - **Double-click:** **`manual/Build Firmware.command`** (Mac) or
   **`manual/Build Firmware (Windows).bat`** (Windows, needs Python). Both run the same
   build and tell you where the output landed.

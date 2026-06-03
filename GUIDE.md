@@ -40,7 +40,7 @@ build it for you in seconds, with no install.
 2. Open the editor in Chrome or Edge: **https://gonzodamus.github.io/FBV_Chroma/**
 3. Click **"First time here? Build the patched firmware"** at the top, then **Choose
    stock .hxf** and pick your `Fbv3_v1_02_00.hxf`.
-4. Your patched **`Fbv3_Chroma_1.1.hxf`** downloads automatically. (The patching happens
+4. Your patched **`Fbv3_Chroma_1.2.hxf`** downloads automatically. (The patching happens
    in your browser; your firmware is never uploaded anywhere.)
 
 > Prefer not to use the hosted page? You can build the file on your own machine instead:
@@ -53,7 +53,7 @@ build it for you in seconds, with no install.
 
 1. Connect the FBV3 to your computer with the USB cable.
 2. Open the **Line 6 FBV3 Updater**.
-3. Choose the option to **update from a file**, and pick your **`Fbv3_Chroma_1.1.hxf`**.
+3. Choose the option to **update from a file**, and pick your **`Fbv3_Chroma_1.2.hxf`**.
 4. Let it run.
    - **You may see a brief "error" and a restart partway through. That's expected.**
      Just let it finish; the pedal checks the file a second way and accepts it.
@@ -62,8 +62,8 @@ build it for you in seconds, with no install.
 > Keep your original `Fbv3_v1_02_00.hxf` handy so you can always go back to stock if you
 > need to (see [If something goes wrong](#if-something-goes-wrong)).
 
-> How to know it worked: when the pedal restarts, its screen shows **"FBV Chroma 1.1"**.
-> (In the Line 6 Updater it lists as version **1.10**.) The lights are controlled from
+> How to know it worked: when the pedal restarts, its screen shows **"FBV Chroma 1.2"**.
+> (In the Line 6 Updater it lists as version **1.20**.) The lights are controlled from
 > the computer now, so move on to Part 2 to see them in action.
 
 ---

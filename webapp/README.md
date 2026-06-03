@@ -28,7 +28,7 @@ on-screen layout so the hardware matches the editor.
 ## Building the firmware (in-browser)
 
 The **"Build the patched firmware"** section at the top turns a stock
-`Fbv3_v1_02_00.hxf` into `Fbv3_Chroma_1.1.hxf` entirely client-side (via `patch.js` +
+`Fbv3_v1_02_00.hxf` into `Fbv3_Chroma_1.2.hxf` entirely client-side (via `patch.js` +
 `md5.js` and the browser's native `CompressionStream`). The file is never uploaded. It
 applies the exact same byte edits as `manual/build/build_firmware.py` and verifies the result
 against the known-good image checksum before offering the download.
@@ -52,7 +52,7 @@ against the known-good image checksum before offering the download.
 ## Requirements
 
 - A Chromium browser (Chrome/Edge). Safari and Firefox have no Web MIDI API.
-- The FBV3 running the **patched** firmware (**FBV Chroma 1.1**). Stock firmware
+- The FBV3 running the **patched** firmware (**FBV Chroma 1.2**). Stock firmware
   ignores these CCs, so the app does nothing on an unpatched pedal.
 
 ## Scope
